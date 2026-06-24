@@ -1,0 +1,100 @@
+# Build output
+bin/
+obj/
+[Bb]uild/
+
+# Visual Studio
+.vs/
+*.user
+*.userosscache
+*.sln.docstates
+*.suo
+*.cache
+*.ilk
+*.log
+*.tlog
+*.vspscc
+*.vssscc
+
+# Rider
+.idea/
+*.sln.iml
+
+# Mono
+*.pidb
+*.svd
+
+# NuGet
+*.nupkg
+packages/
+# The packages folder can be ignored because of PackageRestore
+**/packages/*
+!**/packages/build/
+!**/packages/repositories.config
+!**/packages/*/build/
+
+# DotNet
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# Test Results
+TestResults/
+*.TestsResults
+
+# Publish output
+publish/
+
+# IIS Express
+/.vs/*
+
+# Rider
+.idea/
+*.sln.iml
+
+# OS generated
+.DS_Store
+Thumbs.db
+
+# User-specific files
+*.dbmdl
+*.bak
+*.backup
+*.log
+*.orig
+*.rej
+
+# Resharper
+_ReSharper*/
+*.DotSettings.user
+
+# Azure DevOps
+*.tfignore
+
+# Visual Studio code coverage
+*.coverage
+*.coveragexml
+
+# Visual Studio profiler
+*.psess
+*.vsp
+*.vspx
+
+# Visual Studio test database
+*.mdf
+*.ldf
+
+# SQL Server files
+*.ndf
+
+# Others
+*.vsix
+
+# Ignore generated files
+Generated*/
+
+# Azure Functions
+local.settings.json
+
+# node_modules if using frontend packages
+node_modules/
