@@ -1,17 +1,17 @@
 <Solution>
   <Folder Name="/API/">
-    <Project Path="src/API/IndustrialIoTPlatform.API/IndustrialIoTPlatform.API.csproj" />
+    <Project Path="src/API/API.csproj" />
   </Folder>
   <Folder Name="/Core/">
-    <Project Path="src/Core/IndustrialIoTPlatform.Application/IndustrialIoTPlatform.Application.csproj" />
-    <Project Path="src/Core/IndustrialIoTPlatform.Domain/IndustrialIoTPlatform.Domain.csproj" />
+    <Project Path="src/Core/Application/Application.csproj" />
+    <Project Path="src/Core/Domain/Domain.csproj" />
   </Folder>
   <Folder Name="/Infrastructure/">
-    <Project Path="src/Infrastructure/IndustrialIoTPlatform.Infrastructure/IndustrialIoTPlatform.Infrastructure.csproj" />
+    <Project Path="src/Infrastructure/Infrastructure.csproj" />
   </Folder>
   <Folder Name="/Tests/">
-    <Project Path="tests/IndustrialIoTPlatform.Application.Tests/IndustrialIoTPlatform.Application.Tests.csproj" />
-    <Project Path="tests/IndustrialIoTPlatform.Architecture.Tests/IndustrialIoTPlatform.Architecture.Tests.csproj" />
-    <Project Path="tests/IndustrialIoTPlatform.Domain.Tests/IndustrialIoTPlatform.Domain.Tests.csproj" />
+    <Project Path="tests/Application.Tests/Application.Tests.csproj" />
+    <Project Path="tests/Architecture.Tests/Architecture.Tests.csproj" />
+    <Project Path="tests/Domain.Tests/Domain.Tests.csproj" />
   </Folder>
 </Solution>

@@ -19,8 +19,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Core\IndustrialIoTPlatform.Application\IndustrialIoTPlatform.Application.csproj" />
-    <ProjectReference Include="..\..\src\Core\IndustrialIoTPlatform.Domain\IndustrialIoTPlatform.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Core\Domain\Domain.csproj" />
   </ItemGroup>
 
 </Project>
