@@ -1,8 +1,19 @@
+using IndustrialIoTPlatform.Application.Abstractions;
+using IndustrialIoTPlatform.Application.Devices.Commands;
+using IndustrialIoTPlatform.Application.Devices.Queries;
+using IndustrialIoTPlatform.Infrastructure.EventSourcing;
+using IndustrialIoTPlatform.Infrastructure.ReadModels;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // 1. Add services to the container.
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSingleton<IEventStore, InMemoryEventStore>();
+builder.Services.AddSingleton<IDeviceStatusReadRepository, InMemoryDeviceStatusReadRepository>();
+builder.Services.AddTransient<RegisterDeviceCommandHandler>();
+builder.Services.AddTransient<StartDeviceCommandHandler>();
+builder.Services.AddTransient<GetDeviceStatusQueryHandler>();
 
 // 2. Add Swagger/OpenAPI support
 builder.Services.AddSwaggerGen(options =>
@@ -31,30 +42,39 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseAuthorization();
 
-var summaries = new[]
-{
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
+app.MapPost(
+    "/devices/register",
+    async (RegisterDeviceRequest request, RegisterDeviceCommandHandler handler, CancellationToken ct) =>
+    {
+        var command = new RegisterDeviceCommand(request.DeviceCode, request.MaxTemperatureThreshold);
+        var deviceId = await handler.Handle(command, ct);
+        return Results.Created($"/devices/{deviceId}/status", new RegisterDeviceResponse(deviceId));
+    });
 
-app.MapGet("/weatherforecast", () =>
-{
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast");
+app.MapPost(
+    "/devices/{deviceId:guid}/start",
+    async (Guid deviceId, StartDeviceRequest request, StartDeviceCommandHandler handler, CancellationToken ct) =>
+    {
+        var command = new StartDeviceCommand(deviceId, request.CurrentTemperature);
+        await handler.Handle(command, ct);
+        return Results.Accepted($"/devices/{deviceId}/status");
+    });
+
+app.MapGet(
+    "/devices/{deviceId:guid}/status",
+    async (Guid deviceId, GetDeviceStatusQueryHandler handler, CancellationToken ct) =>
+    {
+        var query = new GetDeviceStatusQuery(deviceId);
+        var result = await handler.Handle(query, ct);
+        return result is null ? Results.NotFound() : Results.Ok(result);
+    });
 
 // 4. map to router
 app.MapControllers();
 app.Run();
 
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}
+public sealed record RegisterDeviceRequest(string DeviceCode, double MaxTemperatureThreshold);
+
+public sealed record RegisterDeviceResponse(Guid DeviceId);
+
+public sealed record StartDeviceRequest(double CurrentTemperature);

@@ -1,4 +1,7 @@
 ﻿using NetArchTest.Rules;
+using IndustrialIoTPlatform.Application.Devices.Commands;
+using IndustrialIoTPlatform.Domain;
+using IndustrialIoTPlatform.Infrastructure.EventSourcing;
 
 namespace IndustrialIoTPlatform.Architecture.Tests;
 
@@ -8,7 +11,7 @@ public class UnitTest1
     public void Domain_Should_Not_Depend_On_Other_Layers()
     {
         var result = Types
-            .InAssembly(typeof(IndustrialIoTPlatform.Domain.Class1).Assembly)
+            .InAssembly(typeof(Device).Assembly)
             .ShouldNot()
             .HaveDependencyOnAny(
                 "IndustrialIoTPlatform.Application",
@@ -23,7 +26,7 @@ public class UnitTest1
     public void Application_Should_Not_Depend_On_Infrastructure_Or_API()
     {
         var result = Types
-            .InAssembly(typeof(IndustrialIoTPlatform.Application.Class1).Assembly)
+            .InAssembly(typeof(RegisterDeviceCommandHandler).Assembly)
             .ShouldNot()
             .HaveDependencyOnAny(
                 "IndustrialIoTPlatform.Infrastructure",
@@ -37,7 +40,7 @@ public class UnitTest1
     public void Infrastructure_Should_Not_Depend_On_API()
     {
         var result = Types
-            .InAssembly(typeof(IndustrialIoTPlatform.Infrastructure.Class1).Assembly)
+            .InAssembly(typeof(InMemoryEventStore).Assembly)
             .ShouldNot()
             .HaveDependencyOn("IndustrialIoTPlatform.API")
             .GetResult();
