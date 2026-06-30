@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Application.Abstractions;
 using Application.Devices.Models;
+using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 using MongoDB.Driver;
 using StackExchange.Redis;
@@ -110,6 +111,7 @@ public sealed class MongoCachedDeviceStatusReadRepository : IDeviceStatusReadRep
     private sealed class DeviceStatusDocument
     {
         [BsonId]
+        [BsonGuidRepresentation(GuidRepresentation.Standard)]
         public Guid DeviceId { get; init; }
 
         public string DeviceCode { get; init; } = string.Empty;

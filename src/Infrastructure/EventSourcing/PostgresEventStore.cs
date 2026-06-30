@@ -28,8 +28,7 @@ public sealed class PostgresEventStore : IEventStore
     {
         await EnsureCreatedAsync(cancellationToken);
 
-        await using var connection = new NpgsqlConnection(_connectionString);
-        await connection.OpenAsync(cancellationToken);
+        await using var connection = await OpenConnectionAsync(cancellationToken);
 
         var sql = $"""
             SELECT event_type, payload
@@ -67,8 +66,7 @@ public sealed class PostgresEventStore : IEventStore
 
         await EnsureCreatedAsync(cancellationToken);
 
-        await using var connection = new NpgsqlConnection(_connectionString);
-        await connection.OpenAsync(cancellationToken);
+        await using var connection = await OpenConnectionAsync(cancellationToken);
         await using var transaction = await connection.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
 
         try
@@ -117,8 +115,7 @@ public sealed class PostgresEventStore : IEventStore
                 return;
             }
 
-            await using var connection = new NpgsqlConnection(_connectionString);
-            await connection.OpenAsync(cancellationToken);
+            await using var connection = await OpenConnectionAsync(cancellationToken);
 
             var sql = $"""
                 CREATE SCHEMA IF NOT EXISTS {_schema};
@@ -181,6 +178,26 @@ public sealed class PostgresEventStore : IEventStore
         command.Parameters.AddWithValue("occurredOnUtc", domainEvent.OccurredOnUtc);
 
         await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    private async Task<NpgsqlConnection> OpenConnectionAsync(CancellationToken cancellationToken)
+    {
+        var connection = new NpgsqlConnection(_connectionString);
+
+        try
+        {
+            await connection.OpenAsync(cancellationToken);
+            return connection;
+        }
+        catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.InvalidCatalogName)
+        {
+            await connection.DisposeAsync();
+            throw new InvalidOperationException(
+                "PostgreSQL target database does not exist. Check ConnectionStrings:Postgres -> Database. " +
+                "If you are using Docker Compose, remember POSTGRES_DB is only created on the first container initialization. " +
+                "For an existing volume, create the database manually or recreate the volume with `docker compose down -v` before `docker compose up -d`.",
+                ex);
+        }
     }
 
     private static IDomainEvent Deserialize(string eventType, string payload)

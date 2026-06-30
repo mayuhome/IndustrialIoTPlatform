@@ -1,7 +1,10 @@
 using Application.Abstractions;
 using Application.Devices.Commands;
 using Application.Devices.Queries;
+using MongoDB.Bson;
 using MongoDB.Driver;
+using Npgsql;
+using System.Net.Sockets;
 using StackExchange.Redis;
 using Infrastructure.EventSourcing;
 using Infrastructure.ReadModels;
@@ -43,6 +46,8 @@ builder.Services.AddSwaggerGen(options =>
 });
 
 var app = builder.Build();
+
+await ValidateInfrastructureConnectivityAsync(app.Services, app.Configuration, app.Logger, app.Lifetime.ApplicationStopping);
 
 // 3. Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -113,6 +118,19 @@ static void ValidateInfrastructureConfiguration(IConfiguration configuration)
     {
         missing.Add("ConnectionStrings:Mongo");
     }
+    else
+    {
+        try
+        {
+            _ = MongoUrl.Create(mongo);
+        }
+        catch (Exception ex)
+        {
+            throw new InvalidOperationException(
+                "ConnectionStrings:Mongo is invalid. If the username or password contains reserved URI characters such as @, :, /, ?, #, or %, URL-encode them first.",
+                ex);
+        }
+    }
 
     if (string.IsNullOrWhiteSpace(eventStoreSchema))
     {
@@ -128,6 +146,127 @@ static void ValidateInfrastructureConfiguration(IConfiguration configuration)
     {
         throw new InvalidOperationException(
             "Missing required infrastructure settings: " + string.Join(", ", missing));
+    }
+}
+
+static async Task ValidateInfrastructureConnectivityAsync(
+    IServiceProvider services,
+    IConfiguration configuration,
+    ILogger logger,
+    CancellationToken cancellationToken)
+{
+    await ValidatePostgresConnectivityAsync(configuration, logger, cancellationToken);
+    await ValidateRedisConnectivityAsync(services, logger);
+    await ValidateMongoConnectivityAsync(services, configuration, logger, cancellationToken);
+}
+
+static async Task ValidatePostgresConnectivityAsync(
+    IConfiguration configuration,
+    ILogger logger,
+    CancellationToken cancellationToken)
+{
+    var connectionString = configuration.GetConnectionString("Postgres")!;
+
+    try
+    {
+        await using var connection = new NpgsqlConnection(connectionString);
+        await connection.OpenAsync(cancellationToken);
+
+        await using var command = new NpgsqlCommand("SELECT 1;", connection);
+        await command.ExecuteScalarAsync(cancellationToken);
+
+        logger.LogInformation("PostgreSQL connectivity probe succeeded.");
+    }
+    catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.InvalidCatalogName)
+    {
+        throw new InvalidOperationException(
+            "PostgreSQL connectivity probe failed: target database does not exist. " +
+            "Check ConnectionStrings:Postgres -> Database. If you are using Docker Compose, recreate the volume or create the database manually.",
+            ex);
+    }
+    catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.InvalidPassword)
+    {
+        throw new InvalidOperationException(
+            "PostgreSQL connectivity probe failed: username or password is invalid.",
+            ex);
+    }
+    catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.InvalidAuthorizationSpecification)
+    {
+        throw new InvalidOperationException(
+            "PostgreSQL connectivity probe failed: authorization configuration is invalid. Check username and authentication settings.",
+            ex);
+    }
+    catch (NpgsqlException ex) when (ex.InnerException is SocketException)
+    {
+        throw new InvalidOperationException(
+            "PostgreSQL connectivity probe failed: host or port is unreachable. Check ConnectionStrings:Postgres -> Host and Port.",
+            ex);
+    }
+}
+
+static async Task ValidateRedisConnectivityAsync(IServiceProvider services, ILogger logger)
+{
+    try
+    {
+        var redis = services.GetRequiredService<IConnectionMultiplexer>();
+        var database = redis.GetDatabase();
+        _ = await database.PingAsync();
+
+        logger.LogInformation("Redis connectivity probe succeeded.");
+    }
+    catch (RedisServerException ex) when (ex.Message.Contains("NOAUTH", StringComparison.OrdinalIgnoreCase) || ex.Message.Contains("WRONGPASS", StringComparison.OrdinalIgnoreCase))
+    {
+        throw new InvalidOperationException(
+            "Redis connectivity probe failed: authentication failed. Check ConnectionStrings:Redis password configuration.",
+            ex);
+    }
+    catch (RedisConnectionException ex) when (ex.Message.Contains("AuthenticationFailure", StringComparison.OrdinalIgnoreCase) || ex.Message.Contains("NOAUTH", StringComparison.OrdinalIgnoreCase) || ex.Message.Contains("WRONGPASS", StringComparison.OrdinalIgnoreCase))
+    {
+        throw new InvalidOperationException(
+            "Redis connectivity probe failed: authentication failed. Check ConnectionStrings:Redis password configuration.",
+            ex);
+    }
+    catch (RedisConnectionException ex)
+    {
+        throw new InvalidOperationException(
+            "Redis connectivity probe failed: host or port is unreachable. Check ConnectionStrings:Redis endpoint configuration.",
+            ex);
+    }
+}
+
+static async Task ValidateMongoConnectivityAsync(
+    IServiceProvider services,
+    IConfiguration configuration,
+    ILogger logger,
+    CancellationToken cancellationToken)
+{
+    var databaseName = configuration["Projection:MongoDatabase"]!;
+
+    try
+    {
+        var mongoClient = services.GetRequiredService<IMongoClient>();
+        var database = mongoClient.GetDatabase(databaseName);
+        await database.RunCommandAsync((Command<BsonDocument>)"{ ping: 1 }", cancellationToken: cancellationToken);
+
+        logger.LogInformation("MongoDB connectivity probe succeeded.");
+    }
+    catch (MongoAuthenticationException ex)
+    {
+        throw new InvalidOperationException(
+            "MongoDB connectivity probe failed: authentication failed. Check ConnectionStrings:Mongo username, password, and authSource.",
+            ex);
+    }
+    catch (TimeoutException ex)
+    {
+        throw new InvalidOperationException(
+            "MongoDB connectivity probe failed: server did not respond in time. Check host, port, and network reachability.",
+            ex);
+    }
+    catch (MongoConnectionException ex)
+    {
+        throw new InvalidOperationException(
+            "MongoDB connectivity probe failed: host or port is unreachable. Check ConnectionStrings:Mongo endpoint configuration.",
+            ex);
     }
 }
 
