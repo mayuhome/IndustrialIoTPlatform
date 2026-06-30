@@ -8,6 +8,15 @@ public sealed class InMemoryDeviceStatusReadRepository : IDeviceStatusReadReposi
 {
     private readonly ConcurrentDictionary<Guid, DeviceStatusView> _views = new();
 
+    public Task<IReadOnlyList<DeviceStatusView>> GetAllAsync(CancellationToken cancellationToken)
+    {
+        var items = _views.Values
+            .OrderBy(x => x.DeviceCode)
+            .ToArray();
+
+        return Task.FromResult<IReadOnlyList<DeviceStatusView>>(items);
+    }
+
     public Task<DeviceStatusView?> GetAsync(Guid deviceId, CancellationToken cancellationToken)
     {
         _views.TryGetValue(deviceId, out var view);

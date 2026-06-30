@@ -25,6 +25,8 @@ public sealed class InfrastructureDbContext(
             entity.Property(x => x.EventType).HasColumnName("event_type").IsRequired();
             entity.Property(x => x.Payload).HasColumnName("payload").HasColumnType("jsonb").IsRequired();
             entity.Property(x => x.OccurredOnUtc).HasColumnName("occurred_on_utc").IsRequired();
+            entity.Property(x => x.CorrelationId).HasColumnName("correlation_id").IsRequired();
+            entity.Property(x => x.CausationId).HasColumnName("causation_id");
             entity.HasIndex(x => x.OccurredOnUtc).HasDatabaseName("ix_device_events_occurred_on_utc");
         });
 

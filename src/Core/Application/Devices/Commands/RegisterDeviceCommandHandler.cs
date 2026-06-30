@@ -17,7 +17,12 @@ public sealed class RegisterDeviceCommandHandler(
         var aggregate = Device.Register(deviceId, command.DeviceCode, command.MaxTemperatureThreshold);
         var events = aggregate.DequeueUncommittedEvents();
 
-        await _eventStore.AppendAsync(deviceId, expectedVersion: -1, events, cancellationToken);
+        await _eventStore.AppendAsync(
+            deviceId,
+            expectedVersion: -1,
+            events,
+            command.ToMetadata(),
+            cancellationToken);
 
         var view = new DeviceStatusView(
             aggregate.Id,

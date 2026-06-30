@@ -18,6 +18,8 @@
 产出：
 命令处理器模式统一。
 命令侧测试覆盖关键状态转换。
+实现细节文档：
+- [docs/week2-cqrs-command-surface-implementation.md](docs/week2-cqrs-command-surface-implementation.md)
 第 3 周：Event Sourcing 深化（投影与回放）
 
 目标：让读模型真正独立演进。

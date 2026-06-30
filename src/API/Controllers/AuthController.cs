@@ -16,7 +16,14 @@ public sealed class AuthController : ControllerBase
         [FromServices] RegisterUserCommandHandler handler,
         CancellationToken cancellationToken)
     {
-        var result = await handler.Handle(new RegisterUserCommand(request.Username, request.Password), cancellationToken);
+        var trace = CommandTraceHeaders.Read(Request);
+        var command = new RegisterUserCommand(
+            request.Username,
+            request.Password,
+            trace.CorrelationId,
+            trace.CausationId);
+
+        var result = await handler.Handle(command, cancellationToken);
         return Ok(result);
     }
 
@@ -26,7 +33,14 @@ public sealed class AuthController : ControllerBase
         [FromServices] LoginUserCommandHandler handler,
         CancellationToken cancellationToken)
     {
-        var result = await handler.Handle(new LoginUserCommand(request.Username, request.Password), cancellationToken);
+        var trace = CommandTraceHeaders.Read(Request);
+        var command = new LoginUserCommand(
+            request.Username,
+            request.Password,
+            trace.CorrelationId,
+            trace.CausationId);
+
+        var result = await handler.Handle(command, cancellationToken);
         return Ok(result);
     }
 

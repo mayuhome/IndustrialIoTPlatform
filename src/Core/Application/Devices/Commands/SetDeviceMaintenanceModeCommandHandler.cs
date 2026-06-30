@@ -4,20 +4,14 @@ using Domain;
 
 namespace Application.Devices.Commands;
 
-public sealed class StartDeviceCommandHandler
+public sealed class SetDeviceMaintenanceModeCommandHandler(
+    IEventStore eventStore,
+    IDeviceStatusReadRepository readRepository)
 {
-    private readonly IEventStore _eventStore;
-    private readonly IDeviceStatusReadRepository _readRepository;
+    private readonly IEventStore _eventStore = eventStore;
+    private readonly IDeviceStatusReadRepository _readRepository = readRepository;
 
-    public StartDeviceCommandHandler(
-        IEventStore eventStore,
-        IDeviceStatusReadRepository readRepository)
-    {
-        _eventStore = eventStore;
-        _readRepository = readRepository;
-    }
-
-    public async Task Handle(StartDeviceCommand command, CancellationToken cancellationToken)
+    public async Task Handle(SetDeviceMaintenanceModeCommand command, CancellationToken cancellationToken)
     {
         var history = await _eventStore.LoadAsync(command.DeviceId, cancellationToken);
         if (history.Count == 0)
@@ -27,8 +21,7 @@ public sealed class StartDeviceCommandHandler
 
         var aggregate = new Device();
         aggregate.LoadFromHistory(history);
-        aggregate.UpdateTemperature(command.CurrentTemperature);
-        aggregate.Start();
+        aggregate.SetMaintenanceMode(command.IsEnabled);
 
         var events = aggregate.DequeueUncommittedEvents();
         await _eventStore.AppendAsync(

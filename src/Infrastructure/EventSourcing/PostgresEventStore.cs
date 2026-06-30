@@ -30,6 +30,7 @@ public sealed class PostgresEventStore(InfrastructureDbContext dbContext) : IEve
         Guid streamId,
         int expectedVersion,
         IReadOnlyCollection<IDomainEvent> events,
+        CommandMetadata? commandMetadata,
         CancellationToken cancellationToken)
     {
         if (events.Count == 0)
@@ -48,11 +49,12 @@ public sealed class PostgresEventStore(InfrastructureDbContext dbContext) : IEve
 
             if (currentVersion != expectedVersion)
             {
-                throw new InvalidOperationException(
-                    $"Concurrency conflict for stream '{streamId}'. Expected version {expectedVersion}, actual version {currentVersion}.");
+                throw new EventStoreConcurrencyException(streamId, expectedVersion, currentVersion);
             }
 
             var nextVersion = expectedVersion + 1;
+            var correlationId = commandMetadata?.CorrelationId ?? Guid.Empty;
+            var causationId = commandMetadata?.CausationId;
             foreach (var domainEvent in events)
             {
                 _dbContext.DeviceEvents.Add(new EventRecord
@@ -61,7 +63,9 @@ public sealed class PostgresEventStore(InfrastructureDbContext dbContext) : IEve
                     Version = nextVersion,
                     EventType = domainEvent.GetType().Name,
                     Payload = JsonSerializer.Serialize(domainEvent, domainEvent.GetType(), JsonOptions),
-                    OccurredOnUtc = domainEvent.OccurredOnUtc
+                    OccurredOnUtc = domainEvent.OccurredOnUtc,
+                    CorrelationId = correlationId,
+                    CausationId = causationId
                 });
                 nextVersion++;
             }
@@ -72,8 +76,8 @@ public sealed class PostgresEventStore(InfrastructureDbContext dbContext) : IEve
         catch (DbUpdateException ex)
         {
             await transaction.RollbackAsync(cancellationToken);
-            throw new InvalidOperationException(
-                $"Concurrency conflict for stream '{streamId}'. Transaction could not be committed.", ex);
+            var actualVersion = await GetCurrentVersionAsync(streamId, cancellationToken);
+            throw new EventStoreConcurrencyException(streamId, expectedVersion, actualVersion, ex);
         }
         catch
         {
@@ -88,8 +92,18 @@ public sealed class PostgresEventStore(InfrastructureDbContext dbContext) : IEve
         {
             nameof(DeviceRegistered) => Deserialize<DeviceRegistered>(payload),
             nameof(DeviceStarted) => Deserialize<DeviceStarted>(payload),
+            nameof(DeviceStopped) => Deserialize<DeviceStopped>(payload),
+            nameof(DeviceMaintenanceModeChanged) => Deserialize<DeviceMaintenanceModeChanged>(payload),
             _ => throw new NotSupportedException($"Unsupported domain event type '{eventType}'.")
         };
+    }
+
+    private async Task<int?> GetCurrentVersionAsync(Guid streamId, CancellationToken cancellationToken)
+    {
+        return await _dbContext.DeviceEvents
+            .Where(x => x.StreamId == streamId)
+            .Select(x => (int?)x.Version)
+            .MaxAsync(cancellationToken);
     }
 
     private static T Deserialize<T>(string payload) where T : IDomainEvent

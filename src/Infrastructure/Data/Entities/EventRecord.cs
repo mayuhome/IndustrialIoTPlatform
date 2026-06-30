@@ -11,4 +11,8 @@ public sealed class EventRecord
     public string Payload { get; set; } = string.Empty;
 
     public DateTime OccurredOnUtc { get; set; }
+
+    public Guid CorrelationId { get; set; }
+
+    public Guid? CausationId { get; set; }
 }

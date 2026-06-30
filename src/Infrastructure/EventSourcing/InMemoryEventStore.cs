@@ -23,6 +23,7 @@ public sealed class InMemoryEventStore : IEventStore
         Guid streamId,
         int expectedVersion,
         IReadOnlyCollection<IDomainEvent> events,
+        CommandMetadata? commandMetadata,
         CancellationToken cancellationToken)
     {
         lock (_sync)
@@ -32,8 +33,7 @@ public sealed class InMemoryEventStore : IEventStore
 
             if (actualVersion != expectedVersion)
             {
-                throw new InvalidOperationException(
-                    $"Concurrency conflict for stream '{streamId}'. Expected version {expectedVersion}, actual version {actualVersion}.");
+                throw new EventStoreConcurrencyException(streamId, expectedVersion, actualVersion);
             }
 
             stream.AddRange(events);

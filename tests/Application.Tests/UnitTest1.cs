@@ -57,6 +57,7 @@ public class UnitTest1
             Guid streamId,
             int expectedVersion,
             IReadOnlyCollection<IDomainEvent> events,
+            CommandMetadata? commandMetadata,
             CancellationToken cancellationToken)
         {
             if (!_streams.TryGetValue(streamId, out var stream))
@@ -79,6 +80,15 @@ public class UnitTest1
     private sealed class FakeReadRepository : IDeviceStatusReadRepository
     {
         private readonly Dictionary<Guid, DeviceStatusView> _views = new();
+
+        public Task<IReadOnlyList<DeviceStatusView>> GetAllAsync(CancellationToken cancellationToken)
+        {
+            var items = _views.Values
+                .OrderBy(x => x.DeviceCode)
+                .ToArray();
+
+            return Task.FromResult<IReadOnlyList<DeviceStatusView>>(items);
+        }
 
         public Task<DeviceStatusView?> GetAsync(Guid deviceId, CancellationToken cancellationToken)
         {

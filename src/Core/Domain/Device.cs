@@ -47,12 +47,49 @@ public sealed class Device : EventSourcedAggregateRoot
             throw new DomainException("Device is already running.");
         }
 
+        if (Status == DeviceStatus.Maintenance)
+        {
+            throw new DomainException("Device is in maintenance mode and cannot be started.");
+        }
+
         if (Temperature > MaxTemperatureThreshold)
         {
             throw new DomainException($"Temperature is too high ({Temperature}C). Cannot start.");
         }
 
         Raise(new DeviceStarted(Id, DateTime.UtcNow, DateTime.UtcNow));
+    }
+
+    public void Stop()
+    {
+        if (Status != DeviceStatus.Running)
+        {
+            throw new DomainException("Device is not running.");
+        }
+
+        Raise(new DeviceStopped(Id, DateTime.UtcNow, DateTime.UtcNow));
+    }
+
+    public void SetMaintenanceMode(bool enabled)
+    {
+        if (enabled)
+        {
+            if (Status == DeviceStatus.Maintenance)
+            {
+                throw new DomainException("Device is already in maintenance mode.");
+            }
+
+            if (Status == DeviceStatus.Running)
+            {
+                throw new DomainException("Device must be stopped before entering maintenance mode.");
+            }
+        }
+        else if (Status != DeviceStatus.Maintenance)
+        {
+            throw new DomainException("Device is not in maintenance mode.");
+        }
+
+        Raise(new DeviceMaintenanceModeChanged(Id, enabled, DateTime.UtcNow, DateTime.UtcNow));
     }
 
     protected override void Apply(IDomainEvent domainEvent)
@@ -69,6 +106,14 @@ public sealed class Device : EventSourcedAggregateRoot
             case DeviceStarted e:
                 Status = DeviceStatus.Running;
                 LastHeartbeatUtc = e.StartedOnUtc;
+                break;
+            case DeviceStopped e:
+                Status = DeviceStatus.Active;
+                LastHeartbeatUtc = e.StoppedOnUtc;
+                break;
+            case DeviceMaintenanceModeChanged e:
+                Status = e.IsEnabled ? DeviceStatus.Maintenance : DeviceStatus.Active;
+                LastHeartbeatUtc = e.ChangedOnUtc;
                 break;
         }
     }

@@ -58,6 +58,24 @@ public sealed class MongoCachedDeviceStatusReadRepository : IDeviceStatusReadRep
         return view;
     }
 
+    public async Task<IReadOnlyList<DeviceStatusView>> GetAllAsync(CancellationToken cancellationToken)
+    {
+        await EnsureIndexesAsync(cancellationToken);
+
+        var documents = await _collection
+            .Find(FilterDefinition<DeviceStatusDocument>.Empty)
+            .SortBy(x => x.DeviceCode)
+            .ToListAsync(cancellationToken);
+
+        var views = documents.Select(x => x.ToView()).ToArray();
+        foreach (var view in views)
+        {
+            await CacheAsync(BuildCacheKey(view.DeviceId), view);
+        }
+
+        return views;
+    }
+
     public async Task UpsertAsync(DeviceStatusView view, CancellationToken cancellationToken)
     {
         await EnsureIndexesAsync(cancellationToken);

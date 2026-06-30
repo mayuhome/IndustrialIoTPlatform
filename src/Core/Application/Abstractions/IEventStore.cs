@@ -9,5 +9,6 @@ public interface IEventStore
         Guid streamId,
         int expectedVersion,
         IReadOnlyCollection<IDomainEvent> events,
+    CommandMetadata? commandMetadata,
         CancellationToken cancellationToken);
 }

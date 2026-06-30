@@ -47,7 +47,9 @@ public sealed class InfrastructureDatabaseInitializer(
             version integer NOT NULL,
             event_type text NOT NULL,
             payload jsonb NOT NULL,
-            occurred_on_utc timestamp with time zone NOT NULL";
+            occurred_on_utc timestamp with time zone NOT NULL,
+            correlation_id uuid NOT NULL,
+            causation_id uuid NULL";
 
         await EnsureTableAsync(
             connection,
@@ -62,12 +64,16 @@ public sealed class InfrastructureDatabaseInitializer(
         await RenameColumnIfNeededAsync(connection, transaction, _eventStoreSchema, "device_events", "EventType", "event_type", cancellationToken);
         await RenameColumnIfNeededAsync(connection, transaction, _eventStoreSchema, "device_events", "Payload", "payload", cancellationToken);
         await RenameColumnIfNeededAsync(connection, transaction, _eventStoreSchema, "device_events", "OccurredOnUtc", "occurred_on_utc", cancellationToken);
+        await RenameColumnIfNeededAsync(connection, transaction, _eventStoreSchema, "device_events", "CorrelationId", "correlation_id", cancellationToken);
+        await RenameColumnIfNeededAsync(connection, transaction, _eventStoreSchema, "device_events", "CausationId", "causation_id", cancellationToken);
 
         await EnsureColumnAsync(connection, transaction, _eventStoreSchema, "device_events", "stream_id", "uuid", cancellationToken);
         await EnsureColumnAsync(connection, transaction, _eventStoreSchema, "device_events", "version", "integer", cancellationToken);
         await EnsureColumnAsync(connection, transaction, _eventStoreSchema, "device_events", "event_type", "text", cancellationToken);
         await EnsureColumnAsync(connection, transaction, _eventStoreSchema, "device_events", "payload", "jsonb", cancellationToken);
         await EnsureColumnAsync(connection, transaction, _eventStoreSchema, "device_events", "occurred_on_utc", "timestamp with time zone", cancellationToken);
+        await EnsureColumnAsync(connection, transaction, _eventStoreSchema, "device_events", "correlation_id", "uuid NOT NULL DEFAULT '00000000-0000-0000-0000-000000000000'", cancellationToken);
+        await EnsureColumnAsync(connection, transaction, _eventStoreSchema, "device_events", "causation_id", "uuid", cancellationToken);
 
         await EnsurePrimaryKeyAsync(
             connection,

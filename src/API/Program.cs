@@ -69,6 +69,9 @@ builder.Services.AddSingleton<IDeviceStatusReadRepository>(sp =>
         builder.Configuration.GetValue<int?>("Cache:DefaultTtlSeconds") ?? 300));
 builder.Services.AddTransient<RegisterDeviceCommandHandler>();
 builder.Services.AddTransient<StartDeviceCommandHandler>();
+builder.Services.AddTransient<StopDeviceCommandHandler>();
+builder.Services.AddTransient<SetDeviceMaintenanceModeCommandHandler>();
+builder.Services.AddTransient<GetAllDevicesQueryHandler>();
 builder.Services.AddTransient<GetDeviceStatusQueryHandler>();
 builder.Services.AddTransient<RegisterUserCommandHandler>();
 builder.Services.AddTransient<LoginUserCommandHandler>();
