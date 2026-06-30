@@ -1,37 +1,35 @@
 using Application.Abstractions;
-using Application.Devices.Models;
 using Domain;
 
 namespace Application.Devices.Commands;
 
 public sealed class RegisterDeviceCommandHandler(
     IEventStore eventStore,
-    IDeviceStatusReadRepository readRepository)
+    IDeviceEventProjector projector)
 {
     private readonly IEventStore _eventStore = eventStore;
-    private readonly IDeviceStatusReadRepository _readRepository = readRepository;
+    private readonly IDeviceEventProjector _projector = projector;
 
     public async Task<Guid> Handle(RegisterDeviceCommand command, CancellationToken cancellationToken)
     {
         var deviceId = Guid.NewGuid();
         var aggregate = Device.Register(deviceId, command.DeviceCode, command.MaxTemperatureThreshold);
         var events = aggregate.DequeueUncommittedEvents();
+        var expectedVersion = -1;
+        var metadata = command.ToMetadata();
 
         await _eventStore.AppendAsync(
             deviceId,
-            expectedVersion: -1,
+            expectedVersion,
             events,
-            command.ToMetadata(),
+            metadata,
             cancellationToken);
 
-        var view = new DeviceStatusView(
-            aggregate.Id,
-            aggregate.DeviceCode,
-            aggregate.Status.ToString(),
-            aggregate.LastHeartbeatUtc,
-            aggregate.MaxTemperatureThreshold);
+        var projectedEvents = events
+            .Select((domainEvent, index) => new StoredEvent(deviceId, expectedVersion + index + 1, domainEvent, metadata))
+            .ToArray();
 
-        await _readRepository.UpsertAsync(view, cancellationToken);
+        await _projector.ProjectAsync(projectedEvents, cancellationToken);
         return deviceId;
     }
 }

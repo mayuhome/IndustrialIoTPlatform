@@ -30,6 +30,8 @@
 产出：
 Projector 组件。
 投影回放测试与重复投递测试。
+实现细节文档：
+- [docs/week3-event-sourcing-projection-replay-implementation.md](docs/week3-event-sourcing-projection-replay-implementation.md)
 第 4 周：架构治理与生产化
 
 目标：让“好架构”可持续执行，不依赖个人自觉。

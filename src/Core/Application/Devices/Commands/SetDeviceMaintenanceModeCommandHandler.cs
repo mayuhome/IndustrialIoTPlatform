@@ -1,15 +1,14 @@
 using Application.Abstractions;
-using Application.Devices.Models;
 using Domain;
 
 namespace Application.Devices.Commands;
 
 public sealed class SetDeviceMaintenanceModeCommandHandler(
     IEventStore eventStore,
-    IDeviceStatusReadRepository readRepository)
+    IDeviceEventProjector projector)
 {
     private readonly IEventStore _eventStore = eventStore;
-    private readonly IDeviceStatusReadRepository _readRepository = readRepository;
+    private readonly IDeviceEventProjector _projector = projector;
 
     public async Task Handle(SetDeviceMaintenanceModeCommand command, CancellationToken cancellationToken)
     {
@@ -24,20 +23,20 @@ public sealed class SetDeviceMaintenanceModeCommandHandler(
         aggregate.SetMaintenanceMode(command.IsEnabled);
 
         var events = aggregate.DequeueUncommittedEvents();
+        var expectedVersion = aggregate.Version;
+        var metadata = command.ToMetadata();
+
         await _eventStore.AppendAsync(
             command.DeviceId,
-            aggregate.Version,
+            expectedVersion,
             events,
-            command.ToMetadata(),
+            metadata,
             cancellationToken);
 
-        var view = new DeviceStatusView(
-            aggregate.Id,
-            aggregate.DeviceCode,
-            aggregate.Status.ToString(),
-            aggregate.LastHeartbeatUtc,
-            aggregate.MaxTemperatureThreshold);
+        var projectedEvents = events
+            .Select((domainEvent, index) => new StoredEvent(command.DeviceId, expectedVersion + index + 1, domainEvent, metadata))
+            .ToArray();
 
-        await _readRepository.UpsertAsync(view, cancellationToken);
+        await _projector.ProjectAsync(projectedEvents, cancellationToken);
     }
 }

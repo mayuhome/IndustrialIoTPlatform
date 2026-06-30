@@ -6,17 +6,28 @@ namespace Infrastructure.EventSourcing;
 
 public sealed class InMemoryEventStore : IEventStore
 {
-    private readonly ConcurrentDictionary<Guid, List<IDomainEvent>> _streams = new();
+    private readonly ConcurrentDictionary<Guid, List<StoredEvent>> _streams = new();
     private readonly object _sync = new();
 
     public Task<IReadOnlyList<IDomainEvent>> LoadAsync(Guid streamId, CancellationToken cancellationToken)
     {
         if (_streams.TryGetValue(streamId, out var stream))
         {
-            return Task.FromResult<IReadOnlyList<IDomainEvent>>(stream.ToArray());
+            return Task.FromResult<IReadOnlyList<IDomainEvent>>(stream.Select(x => x.DomainEvent).ToArray());
         }
 
         return Task.FromResult<IReadOnlyList<IDomainEvent>>(Array.Empty<IDomainEvent>());
+    }
+
+    public Task<IReadOnlyList<StoredEvent>> LoadAllAsync(CancellationToken cancellationToken)
+    {
+        var all = _streams.Values
+            .SelectMany(x => x)
+            .OrderBy(x => x.StreamId)
+            .ThenBy(x => x.Version)
+            .ToArray();
+
+        return Task.FromResult<IReadOnlyList<StoredEvent>>(all);
     }
 
     public Task AppendAsync(
@@ -28,7 +39,7 @@ public sealed class InMemoryEventStore : IEventStore
     {
         lock (_sync)
         {
-            var stream = _streams.GetOrAdd(streamId, _ => new List<IDomainEvent>());
+            var stream = _streams.GetOrAdd(streamId, _ => new List<StoredEvent>());
             var actualVersion = stream.Count - 1;
 
             if (actualVersion != expectedVersion)
@@ -36,7 +47,12 @@ public sealed class InMemoryEventStore : IEventStore
                 throw new EventStoreConcurrencyException(streamId, expectedVersion, actualVersion);
             }
 
-            stream.AddRange(events);
+            var nextVersion = expectedVersion + 1;
+            foreach (var domainEvent in events)
+            {
+                stream.Add(new StoredEvent(streamId, nextVersion, domainEvent, commandMetadata));
+                nextVersion++;
+            }
         }
 
         return Task.CompletedTask;

@@ -140,6 +140,10 @@ public sealed class MongoCachedDeviceStatusReadRepository : IDeviceStatusReadRep
 
         public double MaxTemperatureThreshold { get; init; }
 
+        [BsonDefaultValue(-1)]
+        [BsonIgnoreIfDefault]
+        public int LastProjectedVersion { get; init; } = -1;
+
         public static DeviceStatusDocument FromView(DeviceStatusView view)
         {
             return new DeviceStatusDocument
@@ -148,7 +152,8 @@ public sealed class MongoCachedDeviceStatusReadRepository : IDeviceStatusReadRep
                 DeviceCode = view.DeviceCode,
                 Status = view.Status,
                 LastHeartbeatUtc = view.LastHeartbeatUtc,
-                MaxTemperatureThreshold = view.MaxTemperatureThreshold
+                MaxTemperatureThreshold = view.MaxTemperatureThreshold,
+                LastProjectedVersion = -1
             };
         }
 

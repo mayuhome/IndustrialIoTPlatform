@@ -26,6 +26,32 @@ public sealed class PostgresEventStore(InfrastructureDbContext dbContext) : IEve
         return records.Select(x => Deserialize(x.EventType, x.Payload)).ToArray();
     }
 
+    public async Task<IReadOnlyList<StoredEvent>> LoadAllAsync(CancellationToken cancellationToken)
+    {
+        var records = await _dbContext.DeviceEvents
+            .AsNoTracking()
+            .OrderBy(x => x.StreamId)
+            .ThenBy(x => x.Version)
+            .Select(x => new
+            {
+                x.StreamId,
+                x.Version,
+                x.EventType,
+                x.Payload,
+                x.CorrelationId,
+                x.CausationId
+            })
+            .ToListAsync(cancellationToken);
+
+        return records
+            .Select(x => new StoredEvent(
+                x.StreamId,
+                x.Version,
+                Deserialize(x.EventType, x.Payload),
+                new CommandMetadata(x.CorrelationId, x.CausationId)))
+            .ToArray();
+    }
+
     public async Task AppendAsync(
         Guid streamId,
         int expectedVersion,

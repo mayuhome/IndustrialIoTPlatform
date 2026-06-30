@@ -17,6 +17,7 @@ using Infrastructure.Users;
 using Application.Auth.Commands;
 using Application.Auth.Queries;
 using Application.Devices.Commands;
+using Application.Devices.Projections;
 using Application.Devices.Queries;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -67,10 +68,17 @@ builder.Services.AddSingleton<IDeviceStatusReadRepository>(sp =>
         builder.Configuration["Projection:MongoDatabase"]!,
         sp.GetRequiredService<IConnectionMultiplexer>(),
         builder.Configuration.GetValue<int?>("Cache:DefaultTtlSeconds") ?? 300));
+builder.Services.AddSingleton<IDeviceEventProjector>(sp =>
+    new MongoDeviceEventProjector(
+        sp.GetRequiredService<IMongoClient>(),
+        builder.Configuration["Projection:MongoDatabase"]!,
+        sp.GetRequiredService<IConnectionMultiplexer>(),
+        builder.Configuration.GetValue<int?>("Cache:DefaultTtlSeconds") ?? 300));
 builder.Services.AddTransient<RegisterDeviceCommandHandler>();
 builder.Services.AddTransient<StartDeviceCommandHandler>();
 builder.Services.AddTransient<StopDeviceCommandHandler>();
 builder.Services.AddTransient<SetDeviceMaintenanceModeCommandHandler>();
+builder.Services.AddTransient<RebuildDeviceReadModelHandler>();
 builder.Services.AddTransient<GetAllDevicesQueryHandler>();
 builder.Services.AddTransient<GetDeviceStatusQueryHandler>();
 builder.Services.AddTransient<RegisterUserCommandHandler>();
