@@ -3,54 +3,27 @@ using System.Text.Json;
 using Application.Abstractions;
 using Domain.Abstractions;
 using Domain.Events;
-using Npgsql;
+using Infrastructure.Data;
+using Infrastructure.Data.Entities;
+using Microsoft.EntityFrameworkCore;
 
 namespace Infrastructure.EventSourcing;
 
-public sealed class PostgresEventStore : IEventStore
+public sealed class PostgresEventStore(InfrastructureDbContext dbContext) : IEventStore
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
-
-    private readonly string _connectionString;
-    private readonly string _schema;
-    private readonly SemaphoreSlim _initializationLock = new(1, 1);
-    private volatile bool _initialized;
-
-    public PostgresEventStore(string connectionString, string schema)
-    {
-        _connectionString = string.IsNullOrWhiteSpace(connectionString)
-            ? throw new ArgumentException("Postgres connection string is required.", nameof(connectionString))
-            : connectionString;
-        _schema = ValidateSchemaName(schema);
-    }
+    private readonly InfrastructureDbContext _dbContext = dbContext;
 
     public async Task<IReadOnlyList<IDomainEvent>> LoadAsync(Guid streamId, CancellationToken cancellationToken)
     {
-        await EnsureCreatedAsync(cancellationToken);
+        var records = await _dbContext.DeviceEvents
+            .AsNoTracking()
+            .Where(x => x.StreamId == streamId)
+            .OrderBy(x => x.Version)
+            .Select(x => new { x.EventType, x.Payload })
+            .ToListAsync(cancellationToken);
 
-        await using var connection = await OpenConnectionAsync(cancellationToken);
-
-        var sql = $"""
-            SELECT event_type, payload
-            FROM {_schema}.device_events
-            WHERE stream_id = @streamId
-            ORDER BY version ASC;
-            """;
-
-        await using var command = new NpgsqlCommand(sql, connection);
-        command.Parameters.AddWithValue("streamId", streamId);
-
-        await using var reader = await command.ExecuteReaderAsync(cancellationToken);
-        var events = new List<IDomainEvent>();
-
-        while (await reader.ReadAsync(cancellationToken))
-        {
-            var eventType = reader.GetString(0);
-            var payload = reader.GetString(1);
-            events.Add(Deserialize(eventType, payload));
-        }
-
-        return events;
+        return records.Select(x => Deserialize(x.EventType, x.Payload)).ToArray();
     }
 
     public async Task AppendAsync(
@@ -64,14 +37,15 @@ public sealed class PostgresEventStore : IEventStore
             return;
         }
 
-        await EnsureCreatedAsync(cancellationToken);
-
-        await using var connection = await OpenConnectionAsync(cancellationToken);
-        await using var transaction = await connection.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
+        await using var transaction = await _dbContext.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
 
         try
         {
-            var currentVersion = await GetCurrentVersionAsync(connection, transaction, streamId, cancellationToken);
+            var currentVersion = await _dbContext.DeviceEvents
+                .Where(x => x.StreamId == streamId)
+                .Select(x => (int?)x.Version)
+                .MaxAsync(cancellationToken) ?? -1;
+
             if (currentVersion != expectedVersion)
             {
                 throw new InvalidOperationException(
@@ -81,13 +55,21 @@ public sealed class PostgresEventStore : IEventStore
             var nextVersion = expectedVersion + 1;
             foreach (var domainEvent in events)
             {
-                await InsertEventAsync(connection, transaction, streamId, nextVersion, domainEvent, cancellationToken);
+                _dbContext.DeviceEvents.Add(new EventRecord
+                {
+                    StreamId = streamId,
+                    Version = nextVersion,
+                    EventType = domainEvent.GetType().Name,
+                    Payload = JsonSerializer.Serialize(domainEvent, domainEvent.GetType(), JsonOptions),
+                    OccurredOnUtc = domainEvent.OccurredOnUtc
+                });
                 nextVersion++;
             }
 
+            await _dbContext.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
         }
-        catch (PostgresException ex) when (ex.SqlState is PostgresErrorCodes.SerializationFailure or PostgresErrorCodes.UniqueViolation)
+        catch (DbUpdateException ex)
         {
             await transaction.RollbackAsync(cancellationToken);
             throw new InvalidOperationException(
@@ -97,106 +79,6 @@ public sealed class PostgresEventStore : IEventStore
         {
             await transaction.RollbackAsync(cancellationToken);
             throw;
-        }
-    }
-
-    private async Task EnsureCreatedAsync(CancellationToken cancellationToken)
-    {
-        if (_initialized)
-        {
-            return;
-        }
-
-        await _initializationLock.WaitAsync(cancellationToken);
-        try
-        {
-            if (_initialized)
-            {
-                return;
-            }
-
-            await using var connection = await OpenConnectionAsync(cancellationToken);
-
-            var sql = $"""
-                CREATE SCHEMA IF NOT EXISTS {_schema};
-
-                CREATE TABLE IF NOT EXISTS {_schema}.device_events (
-                    stream_id uuid NOT NULL,
-                    version integer NOT NULL,
-                    event_type text NOT NULL,
-                    payload jsonb NOT NULL,
-                    occurred_on_utc timestamptz NOT NULL,
-                    PRIMARY KEY (stream_id, version)
-                );
-
-                CREATE INDEX IF NOT EXISTS ix_device_events_occurred_on_utc
-                    ON {_schema}.device_events (occurred_on_utc);
-                """;
-
-            await using var command = new NpgsqlCommand(sql, connection);
-            await command.ExecuteNonQueryAsync(cancellationToken);
-            _initialized = true;
-        }
-        finally
-        {
-            _initializationLock.Release();
-        }
-    }
-
-    private async Task<int> GetCurrentVersionAsync(
-        NpgsqlConnection connection,
-        NpgsqlTransaction transaction,
-        Guid streamId,
-        CancellationToken cancellationToken)
-    {
-        var sql = $"SELECT COALESCE(MAX(version), -1) FROM {_schema}.device_events WHERE stream_id = @streamId;";
-        await using var command = new NpgsqlCommand(sql, connection, transaction);
-        command.Parameters.AddWithValue("streamId", streamId);
-
-        var result = await command.ExecuteScalarAsync(cancellationToken);
-        return Convert.ToInt32(result);
-    }
-
-    private async Task InsertEventAsync(
-        NpgsqlConnection connection,
-        NpgsqlTransaction transaction,
-        Guid streamId,
-        int version,
-        IDomainEvent domainEvent,
-        CancellationToken cancellationToken)
-    {
-        var sql = $"""
-            INSERT INTO {_schema}.device_events (stream_id, version, event_type, payload, occurred_on_utc)
-            VALUES (@streamId, @version, @eventType, @payload::jsonb, @occurredOnUtc);
-            """;
-
-        await using var command = new NpgsqlCommand(sql, connection, transaction);
-        command.Parameters.AddWithValue("streamId", streamId);
-        command.Parameters.AddWithValue("version", version);
-        command.Parameters.AddWithValue("eventType", domainEvent.GetType().Name);
-        command.Parameters.AddWithValue("payload", JsonSerializer.Serialize(domainEvent, domainEvent.GetType(), JsonOptions));
-        command.Parameters.AddWithValue("occurredOnUtc", domainEvent.OccurredOnUtc);
-
-        await command.ExecuteNonQueryAsync(cancellationToken);
-    }
-
-    private async Task<NpgsqlConnection> OpenConnectionAsync(CancellationToken cancellationToken)
-    {
-        var connection = new NpgsqlConnection(_connectionString);
-
-        try
-        {
-            await connection.OpenAsync(cancellationToken);
-            return connection;
-        }
-        catch (PostgresException ex) when (ex.SqlState == PostgresErrorCodes.InvalidCatalogName)
-        {
-            await connection.DisposeAsync();
-            throw new InvalidOperationException(
-                "PostgreSQL target database does not exist. Check ConnectionStrings:Postgres -> Database. " +
-                "If you are using Docker Compose, remember POSTGRES_DB is only created on the first container initialization. " +
-                "For an existing volume, create the database manually or recreate the volume with `docker compose down -v` before `docker compose up -d`.",
-                ex);
         }
     }
 
@@ -214,23 +96,5 @@ public sealed class PostgresEventStore : IEventStore
     {
         return JsonSerializer.Deserialize<T>(payload, JsonOptions)
             ?? throw new InvalidOperationException($"Unable to deserialize event payload for '{typeof(T).Name}'.");
-    }
-
-    private static string ValidateSchemaName(string schema)
-    {
-        if (string.IsNullOrWhiteSpace(schema))
-        {
-            throw new ArgumentException("Event store schema is required.", nameof(schema));
-        }
-
-        foreach (var ch in schema)
-        {
-            if (!(char.IsLetterOrDigit(ch) || ch == '_'))
-            {
-                throw new ArgumentException("Event store schema contains invalid characters.", nameof(schema));
-            }
-        }
-
-        return schema;
     }
 }

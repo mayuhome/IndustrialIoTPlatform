@@ -5,6 +5,7 @@
 补充文档：
 - 本地开发 / 宿主机调试：当前文档
 - 服务器部署模式：[docs/server-deployment.md](docs/server-deployment.md)
+- 用户管理与 JWT 鉴权：[docs/auth-system.md](docs/auth-system.md)
 
 ## 当前代码中的真实存储落位
 

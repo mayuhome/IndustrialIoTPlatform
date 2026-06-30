@@ -1,29 +1,66 @@
 using Application.Abstractions;
-using Application.Devices.Commands;
-using Application.Devices.Queries;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
 using MongoDB.Bson;
 using MongoDB.Driver;
 using Npgsql;
+using System.Text;
 using System.Net.Sockets;
 using StackExchange.Redis;
+using Infrastructure.Data;
 using Infrastructure.EventSourcing;
 using Infrastructure.ReadModels;
+using Infrastructure.Security;
+using Infrastructure.Users;
+using Application.Auth.Commands;
+using Application.Auth.Queries;
+using Application.Devices.Commands;
+using Application.Devices.Queries;
 
 var builder = WebApplication.CreateBuilder(args);
 
 ValidateInfrastructureConfiguration(builder.Configuration);
+builder.WebHost.UseUrls($"http://0.0.0.0:{builder.Configuration.GetValue<int?>("Server:HttpPort") ?? 5000}");
 
 // 1. Add services to the container.
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddAuthorization();
+builder.Services
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateIssuerSigningKey = true,
+            ValidateLifetime = true,
+            ValidIssuer = builder.Configuration["Jwt:Issuer"],
+            ValidAudience = builder.Configuration["Jwt:Audience"],
+            IssuerSigningKey = new SymmetricSecurityKey(
+                Encoding.UTF8.GetBytes(builder.Configuration["Jwt:SigningKey"]!)),
+            ClockSkew = TimeSpan.FromMinutes(1)
+        };
+    });
+builder.Services.AddDbContext<InfrastructureDbContext>(options =>
+    options.UseNpgsql(builder.Configuration.GetConnectionString("Postgres")));
+builder.Services.AddScoped<InfrastructureDatabaseInitializer>();
 builder.Services.AddSingleton<IMongoClient>(_ =>
     new MongoClient(builder.Configuration.GetConnectionString("Mongo")));
 builder.Services.AddSingleton<IConnectionMultiplexer>(_ =>
     ConnectionMultiplexer.Connect(builder.Configuration.GetConnectionString("Redis")!));
-builder.Services.AddSingleton<IEventStore>(_ =>
-    new PostgresEventStore(
-        builder.Configuration.GetConnectionString("Postgres")!,
-        builder.Configuration["EventStore:Schema"]!));
+builder.Services.AddScoped<IUserRepository, PostgresUserRepository>();
+builder.Services.AddSingleton<IPasswordHasher, Pbkdf2PasswordHasher>();
+builder.Services.AddSingleton<ITokenIssuer>(_ =>
+    new JwtTokenIssuer(
+        builder.Configuration["Jwt:Issuer"]!,
+        builder.Configuration["Jwt:Audience"]!,
+        builder.Configuration["Jwt:SigningKey"]!,
+        builder.Configuration.GetValue<int?>("Jwt:ExpiryMinutes") ?? 60));
+builder.Services.AddScoped<IEventStore, PostgresEventStore>();
 builder.Services.AddSingleton<IDeviceStatusReadRepository>(sp =>
     new MongoCachedDeviceStatusReadRepository(
         sp.GetRequiredService<IMongoClient>(),
@@ -33,6 +70,9 @@ builder.Services.AddSingleton<IDeviceStatusReadRepository>(sp =>
 builder.Services.AddTransient<RegisterDeviceCommandHandler>();
 builder.Services.AddTransient<StartDeviceCommandHandler>();
 builder.Services.AddTransient<GetDeviceStatusQueryHandler>();
+builder.Services.AddTransient<RegisterUserCommandHandler>();
+builder.Services.AddTransient<LoginUserCommandHandler>();
+builder.Services.AddTransient<GetCurrentUserQueryHandler>();
 
 // 2. Add Swagger/OpenAPI support
 builder.Services.AddSwaggerGen(options =>
@@ -43,10 +83,34 @@ builder.Services.AddSwaggerGen(options =>
         Title = "Industrial IoT Platform API",
         Description = "An ASP.NET Core Web API for Industrial IoT Platform",
     });
+    options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Type = SecuritySchemeType.Http,
+        Scheme = "bearer",
+        BearerFormat = "JWT",
+        In = ParameterLocation.Header,
+        Description = "Input a valid JWT bearer token."
+    });
+    options.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            Array.Empty<string>()
+        }
+    });
 });
 
 var app = builder.Build();
 
+await InitializeInfrastructureAsync(app.Services, app.Logger, app.Lifetime.ApplicationStopping);
 await ValidateInfrastructureConnectivityAsync(app.Services, app.Configuration, app.Logger, app.Lifetime.ApplicationStopping);
 
 // 3. Configure the HTTP request pipeline.
@@ -61,34 +125,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseAuthentication();
 app.UseAuthorization();
-
-app.MapPost(
-    "/devices/register",
-    async (RegisterDeviceRequest request, RegisterDeviceCommandHandler handler, CancellationToken ct) =>
-    {
-        var command = new RegisterDeviceCommand(request.DeviceCode, request.MaxTemperatureThreshold);
-        var deviceId = await handler.Handle(command, ct);
-        return Results.Created($"/devices/{deviceId}/status", new RegisterDeviceResponse(deviceId));
-    });
-
-app.MapPost(
-    "/devices/{deviceId:guid}/start",
-    async (Guid deviceId, StartDeviceRequest request, StartDeviceCommandHandler handler, CancellationToken ct) =>
-    {
-        var command = new StartDeviceCommand(deviceId, request.CurrentTemperature);
-        await handler.Handle(command, ct);
-        return Results.Accepted($"/devices/{deviceId}/status");
-    });
-
-app.MapGet(
-    "/devices/{deviceId:guid}/status",
-    async (Guid deviceId, GetDeviceStatusQueryHandler handler, CancellationToken ct) =>
-    {
-        var query = new GetDeviceStatusQuery(deviceId);
-        var result = await handler.Handle(query, ct);
-        return result is null ? Results.NotFound() : Results.Ok(result);
-    });
 
 // 4. map to router
 app.MapControllers();
@@ -101,6 +139,9 @@ static void ValidateInfrastructureConfiguration(IConfiguration configuration)
     var mongo = configuration.GetConnectionString("Mongo");
     var eventStoreSchema = configuration["EventStore:Schema"];
     var projectionDatabase = configuration["Projection:MongoDatabase"];
+    var jwtIssuer = configuration["Jwt:Issuer"];
+    var jwtAudience = configuration["Jwt:Audience"];
+    var jwtSigningKey = configuration["Jwt:SigningKey"];
 
     var missing = new List<string>();
 
@@ -142,6 +183,25 @@ static void ValidateInfrastructureConfiguration(IConfiguration configuration)
         missing.Add("Projection:MongoDatabase");
     }
 
+    if (string.IsNullOrWhiteSpace(jwtIssuer))
+    {
+        missing.Add("Jwt:Issuer");
+    }
+
+    if (string.IsNullOrWhiteSpace(jwtAudience))
+    {
+        missing.Add("Jwt:Audience");
+    }
+
+    if (string.IsNullOrWhiteSpace(jwtSigningKey))
+    {
+        missing.Add("Jwt:SigningKey");
+    }
+    else if (jwtSigningKey.Length < 32)
+    {
+        throw new InvalidOperationException("Jwt:SigningKey must be at least 32 characters long.");
+    }
+
     if (missing.Count > 0)
     {
         throw new InvalidOperationException(
@@ -158,6 +218,17 @@ static async Task ValidateInfrastructureConnectivityAsync(
     await ValidatePostgresConnectivityAsync(configuration, logger, cancellationToken);
     await ValidateRedisConnectivityAsync(services, logger);
     await ValidateMongoConnectivityAsync(services, configuration, logger, cancellationToken);
+}
+
+static async Task InitializeInfrastructureAsync(
+    IServiceProvider services,
+    ILogger logger,
+    CancellationToken cancellationToken)
+{
+    await using var scope = services.CreateAsyncScope();
+    var initializer = scope.ServiceProvider.GetRequiredService<InfrastructureDatabaseInitializer>();
+    await initializer.InitializeAsync(cancellationToken);
+    logger.LogInformation("Infrastructure database schema initialization completed.");
 }
 
 static async Task ValidatePostgresConnectivityAsync(
@@ -269,9 +340,3 @@ static async Task ValidateMongoConnectivityAsync(
             ex);
     }
 }
-
-public sealed record RegisterDeviceRequest(string DeviceCode, double MaxTemperatureThreshold);
-
-public sealed record RegisterDeviceResponse(Guid DeviceId);
-
-public sealed record StartDeviceRequest(double CurrentTemperature);
