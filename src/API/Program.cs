@@ -19,6 +19,11 @@ using Application.Auth.Queries;
 using Application.Devices.Commands;
 using Application.Devices.Projections;
 using Application.Devices.Queries;
+using Application.Simulation;
+using Application.Simulation.Abstractions;
+using Application.Simulation.Commands;
+using Application.Simulation.Queries;
+using Infrastructure.Simulation;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -84,6 +89,19 @@ builder.Services.AddTransient<GetDeviceStatusQueryHandler>();
 builder.Services.AddTransient<RegisterUserCommandHandler>();
 builder.Services.AddTransient<LoginUserCommandHandler>();
 builder.Services.AddTransient<GetCurrentUserQueryHandler>();
+builder.Services.AddTransient<GenerateSimulatedDevicesCommandHandler>();
+builder.Services.AddTransient<ResetSimulatedDevicesCommandHandler>();
+builder.Services.AddTransient<GetAllSimulatedDevicesQueryHandler>();
+
+builder.Services.Configure<SimulationOptions>(builder.Configuration.GetSection("Simulation"));
+builder.Services.AddSingleton<ISimulatedDeviceRepository>(sp =>
+    new MongoSimulatedDeviceRepository(
+        sp.GetRequiredService<IMongoClient>(),
+        builder.Configuration["Projection:MongoDatabase"]!));
+builder.Services.AddSingleton<ISimulatedDeviceStateGenerator, DefaultSimulatedDeviceStateGenerator>();
+builder.Services.AddSingleton<ISimulatedDeviceSimulationService, Infrastructure.Simulation.SimulatedDeviceSimulationService>();
+builder.Services.AddSingleton<SimulationBackgroundService>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<SimulationBackgroundService>());
 
 // 2. Add Swagger/OpenAPI support
 builder.Services.AddSwaggerGen(options =>

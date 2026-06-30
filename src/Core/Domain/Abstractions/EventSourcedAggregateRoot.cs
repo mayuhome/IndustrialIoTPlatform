@@ -2,7 +2,7 @@ namespace Domain.Abstractions;
 
 public abstract class EventSourcedAggregateRoot
 {
-    private readonly List<IDomainEvent> _uncommittedEvents = new();
+    private readonly List<IDomainEvent> _uncommittedEvents = [];
 
     public Guid Id { get; protected set; }
     public int Version { get; private set; } = -1;

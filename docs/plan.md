@@ -58,3 +58,16 @@ CI gate（build + test + architecture test）。
 1. 为 PostgreSQL 引入正式 migration 机制。
 2. 将读模型更新迁移为独立 Projector。
 3. 增加真实存储集成测试。
+
+第5周：创建模拟数据系统
+
+目标：为开发和测试提供可控的模拟数据环境。
+任务：
+- 设计模拟数据生成器，支持设备、事件和状态的批量创建。
+- 提供命令行工具或 API 接口，允许开发者快速生成和重置模拟数据。
+- 确保模拟数据与生产环境的数据结构和约束一致
+产出：
+- 模拟数据生成器工具。
+- 项目运行时生成针对device id的模拟实时数据，频率可配置，默认为每秒一次。
+- 实现细节文档：
+- [docs/week5-simulated-data-system-implementation.md](docs/week5-simulated-data-system-implementation.md)
