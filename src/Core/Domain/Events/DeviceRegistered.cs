@@ -1,6 +1,6 @@
-using IndustrialIoTPlatform.Domain.Abstractions;
+using Domain.Abstractions;
 
-namespace IndustrialIoTPlatform.Domain.Events;
+namespace Domain.Events;
 
 public sealed record DeviceRegistered(
     Guid DeviceId,

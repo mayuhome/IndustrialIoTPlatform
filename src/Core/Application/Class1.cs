@@ -1,4 +1,4 @@
-﻿namespace IndustrialIoTPlatform.Application;
+﻿namespace Application;
 
 public class Class1
 {

@@ -1,4 +1,4 @@
-namespace IndustrialIoTPlatform.Domain.Abstractions;
+namespace Domain.Abstractions;
 
 public abstract class EventSourcedAggregateRoot
 {

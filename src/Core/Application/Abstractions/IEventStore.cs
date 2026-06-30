@@ -1,6 +1,5 @@
-using IndustrialIoTPlatform.Domain.Abstractions;
-
-namespace IndustrialIoTPlatform.Application.Abstractions;
+using Domain.Abstractions;
+namespace Application.Abstractions;
 
 public interface IEventStore
 {

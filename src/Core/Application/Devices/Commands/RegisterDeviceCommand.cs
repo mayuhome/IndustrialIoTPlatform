@@ -1,3 +1,3 @@
-namespace IndustrialIoTPlatform.Application.Devices.Commands;
+namespace Application.Devices.Commands;
 
-public sealed record RegisterDeviceCommand(string DeviceCode, double MaxTemperatureThreshold);
+public sealed record RegisterDeviceCommand(string DeviceCode, double MaxTemperatureThreshold); 

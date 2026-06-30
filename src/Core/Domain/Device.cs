@@ -1,9 +1,9 @@
-using IndustrialIoTPlatform.Domain.Abstractions;
-using IndustrialIoTPlatform.Domain.Enums;
-using IndustrialIoTPlatform.Domain.Events;
-using IndustrialIoTPlatform.Domain.Exceptions;
+using Domain.Events;
+using Domain.Abstractions;
+using Domain.Enums;
+using Domain.Exceptions;
 
-namespace IndustrialIoTPlatform.Domain;
+namespace Domain;
 
 public sealed class Device : EventSourcedAggregateRoot
 {

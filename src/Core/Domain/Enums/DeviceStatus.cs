@@ -1,4 +1,4 @@
-namespace IndustrialIoTPlatform.Domain.Enums
+namespace Domain.Enums
 {
     public enum DeviceStatus
     {

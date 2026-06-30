@@ -1,7 +1,7 @@
-using IndustrialIoTPlatform.Application.Abstractions;
-using IndustrialIoTPlatform.Application.Devices.Models;
+using Application.Abstractions;
+using Application.Devices.Models;
 
-namespace IndustrialIoTPlatform.Application.Devices.Queries;
+namespace Application.Devices.Queries;
 
 public sealed class GetDeviceStatusQueryHandler
 {

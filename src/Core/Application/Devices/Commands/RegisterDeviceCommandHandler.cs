@@ -1,21 +1,15 @@
-using IndustrialIoTPlatform.Application.Abstractions;
-using IndustrialIoTPlatform.Application.Devices.Models;
-using IndustrialIoTPlatform.Domain;
+using Application.Abstractions;
+using Application.Devices.Models;
+using Domain;
 
-namespace IndustrialIoTPlatform.Application.Devices.Commands;
+namespace Application.Devices.Commands;
 
-public sealed class RegisterDeviceCommandHandler
+public sealed class RegisterDeviceCommandHandler(
+    IEventStore eventStore,
+    IDeviceStatusReadRepository readRepository)
 {
-    private readonly IEventStore _eventStore;
-    private readonly IDeviceStatusReadRepository _readRepository;
-
-    public RegisterDeviceCommandHandler(
-        IEventStore eventStore,
-        IDeviceStatusReadRepository readRepository)
-    {
-        _eventStore = eventStore;
-        _readRepository = readRepository;
-    }
+    private readonly IEventStore _eventStore = eventStore;
+    private readonly IDeviceStatusReadRepository _readRepository = readRepository;
 
     public async Task<Guid> Handle(RegisterDeviceCommand command, CancellationToken cancellationToken)
     {

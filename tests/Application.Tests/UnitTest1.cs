@@ -1,11 +1,11 @@
-﻿using IndustrialIoTPlatform.Application.Abstractions;
-using IndustrialIoTPlatform.Application.Devices.Commands;
-using IndustrialIoTPlatform.Application.Devices.Models;
-using IndustrialIoTPlatform.Application.Devices.Queries;
-using IndustrialIoTPlatform.Domain.Abstractions;
-using IndustrialIoTPlatform.Domain.Events;
+﻿using Domain.Events;
+using Application.Abstractions;
+using Application.Devices.Commands;
+using Application.Devices.Models;
+using Application.Devices.Queries;
+using Domain.Abstractions;
 
-namespace IndustrialIoTPlatform.Application.Tests;
+namespace Application.Tests;
 
 public class UnitTest1
 {

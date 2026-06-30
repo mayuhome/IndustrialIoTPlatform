@@ -1,6 +1,6 @@
-using IndustrialIoTPlatform.Application.Devices.Models;
+using Application.Devices.Models;
 
-namespace IndustrialIoTPlatform.Application.Abstractions;
+namespace Application.Abstractions;
 
 public interface IDeviceStatusReadRepository
 {

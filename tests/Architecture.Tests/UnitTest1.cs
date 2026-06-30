@@ -1,9 +1,9 @@
 ﻿using NetArchTest.Rules;
-using IndustrialIoTPlatform.Application.Devices.Commands;
-using IndustrialIoTPlatform.Domain;
-using IndustrialIoTPlatform.Infrastructure.EventSourcing;
+using Application.Devices.Commands;
+using Domain;
+using Infrastructure.EventSourcing;
 
-namespace IndustrialIoTPlatform.Architecture.Tests;
+namespace Architecture.Tests;
 
 public class UnitTest1
 {
@@ -14,9 +14,9 @@ public class UnitTest1
             .InAssembly(typeof(Device).Assembly)
             .ShouldNot()
             .HaveDependencyOnAny(
-                "IndustrialIoTPlatform.Application",
-                "IndustrialIoTPlatform.Infrastructure",
-                "IndustrialIoTPlatform.API")
+                "Application",
+                "Infrastructure",
+                "API")
             .GetResult();
 
         Assert.True(result.IsSuccessful, "Domain layer must not depend on outer layers.");
@@ -29,8 +29,8 @@ public class UnitTest1
             .InAssembly(typeof(RegisterDeviceCommandHandler).Assembly)
             .ShouldNot()
             .HaveDependencyOnAny(
-                "IndustrialIoTPlatform.Infrastructure",
-                "IndustrialIoTPlatform.API")
+                "Infrastructure",
+                "API")
             .GetResult();
 
         Assert.True(result.IsSuccessful, "Application layer must not depend on Infrastructure or API.");
@@ -42,7 +42,7 @@ public class UnitTest1
         var result = Types
             .InAssembly(typeof(InMemoryEventStore).Assembly)
             .ShouldNot()
-            .HaveDependencyOn("IndustrialIoTPlatform.API")
+            .HaveDependencyOn("API")
             .GetResult();
 
         Assert.True(result.IsSuccessful, "Infrastructure layer must not depend on API.");

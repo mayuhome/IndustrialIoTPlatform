@@ -1,8 +1,7 @@
-﻿using IndustrialIoTPlatform.Domain;
-using IndustrialIoTPlatform.Domain.Events;
-using IndustrialIoTPlatform.Domain.Exceptions;
+﻿using Domain.Events;
+using Domain.Exceptions;
 
-namespace IndustrialIoTPlatform.Domain.Tests;
+namespace Domain.Tests;
 
 public class UnitTest1
 {

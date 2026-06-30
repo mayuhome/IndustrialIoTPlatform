@@ -1,4 +1,4 @@
-namespace IndustrialIoTPlatform.Application.Devices.Models;
+namespace Application.Devices.Models;
 
 public sealed record DeviceStatusView(
     Guid DeviceId,

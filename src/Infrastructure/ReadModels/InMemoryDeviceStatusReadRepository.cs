@@ -1,8 +1,8 @@
 using System.Collections.Concurrent;
-using IndustrialIoTPlatform.Application.Abstractions;
-using IndustrialIoTPlatform.Application.Devices.Models;
+using Application.Abstractions;
+using Application.Devices.Models;
 
-namespace IndustrialIoTPlatform.Infrastructure.ReadModels;
+namespace Infrastructure.ReadModels;
 
 public sealed class InMemoryDeviceStatusReadRepository : IDeviceStatusReadRepository
 {

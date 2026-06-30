@@ -1,8 +1,8 @@
 using System.Collections.Concurrent;
-using IndustrialIoTPlatform.Application.Abstractions;
-using IndustrialIoTPlatform.Domain.Abstractions;
+using Application.Abstractions;
+using Domain.Abstractions;
 
-namespace IndustrialIoTPlatform.Infrastructure.EventSourcing;
+namespace Infrastructure.EventSourcing;
 
 public sealed class InMemoryEventStore : IEventStore
 {

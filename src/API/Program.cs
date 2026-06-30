@@ -1,8 +1,8 @@
-using IndustrialIoTPlatform.Application.Abstractions;
-using IndustrialIoTPlatform.Application.Devices.Commands;
-using IndustrialIoTPlatform.Application.Devices.Queries;
-using IndustrialIoTPlatform.Infrastructure.EventSourcing;
-using IndustrialIoTPlatform.Infrastructure.ReadModels;
+using Application.Abstractions;
+using Application.Devices.Commands;
+using Application.Devices.Queries;
+using Infrastructure.EventSourcing;
+using Infrastructure.ReadModels;
 
 var builder = WebApplication.CreateBuilder(args);
 

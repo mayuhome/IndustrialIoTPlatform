@@ -1,8 +1,8 @@
-using IndustrialIoTPlatform.Application.Abstractions;
-using IndustrialIoTPlatform.Application.Devices.Models;
-using IndustrialIoTPlatform.Domain;
+using Application.Abstractions;
+using Application.Devices.Models;
+using Domain;
 
-namespace IndustrialIoTPlatform.Application.Devices.Commands;
+namespace Application.Devices.Commands;
 
 public sealed class StartDeviceCommandHandler
 {
