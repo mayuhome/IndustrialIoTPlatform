@@ -38,3 +38,19 @@ Projector 组件。
 产出：
 CI gate（build + test + architecture test）。
 架构决策记录（ADR）2-3 篇。
+
+当前数据基础设施阶段已新增：
+- PostgreSQL 真实事件存储
+- MongoDB 真实读模型存储
+- Redis 查询缓存
+- Docker Compose 本地依赖编排
+- API 启动配置校验
+
+对应学习文档：
+- [docs/database-prepare.md](docs/database-prepare.md)
+- [docs/infra-setup.md](docs/infra-setup.md)
+
+下一优先级建议：
+1. 为 PostgreSQL 引入正式 migration 机制。
+2. 将读模型更新迁移为独立 Projector。
+3. 增加真实存储集成测试。

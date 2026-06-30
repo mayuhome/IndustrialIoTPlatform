@@ -98,3 +98,9 @@ local.settings.json
 
 # node_modules if using frontend packages
 node_modules/
+
+# Local environment files
+.env.local
+.env.secrets
+.env
+!.env.example
