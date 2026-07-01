@@ -23,6 +23,7 @@ using Application.Simulation;
 using Application.Simulation.Abstractions;
 using Application.Simulation.Commands;
 using Application.Simulation.Queries;
+using API.Realtime;
 using Infrastructure.Simulation;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -33,6 +34,7 @@ builder.WebHost.UseUrls($"http://0.0.0.0:{builder.Configuration.GetValue<int?>("
 // 1. Add services to the container.
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSignalR();
 builder.Services.AddAuthorization();
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -100,8 +102,9 @@ builder.Services.AddSingleton<ISimulatedDeviceRepository>(sp =>
         builder.Configuration["Projection:MongoDatabase"]!));
 builder.Services.AddSingleton<ISimulatedDeviceStateGenerator, DefaultSimulatedDeviceStateGenerator>();
 builder.Services.AddSingleton<ISimulatedDeviceSimulationService, Infrastructure.Simulation.SimulatedDeviceSimulationService>();
-builder.Services.AddSingleton<SimulationBackgroundService>();
-builder.Services.AddHostedService(sp => sp.GetRequiredService<SimulationBackgroundService>());
+builder.Services.AddSingleton<ISimulationDataBroadcaster, SignalRSimulationDataBroadcaster>();
+builder.Services.AddSingleton<SimulationStreamBackgroundService>();
+builder.Services.AddHostedService(sp => sp.GetRequiredService<SimulationStreamBackgroundService>());
 
 // 2. Add Swagger/OpenAPI support
 builder.Services.AddSwaggerGen(options =>
@@ -159,6 +162,7 @@ app.UseAuthorization();
 
 // 4. map to router
 app.MapControllers();
+app.MapHub<SimulationHub>("/hubs/simulation");
 app.Run();
 
 static void ValidateInfrastructureConfiguration(IConfiguration configuration)

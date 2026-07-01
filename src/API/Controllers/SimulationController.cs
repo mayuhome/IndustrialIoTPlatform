@@ -48,8 +48,9 @@ public sealed class SimulationController : ControllerBase
         [FromServices] ISimulatedDeviceSimulationService service,
         CancellationToken cancellationToken)
     {
-        var updated = await service.AdvanceAsync(cancellationToken);
-        return Ok(new AdvanceSimulatedDevicesResponse(updated));
+        var deviceIds = await service.GetAllDeviceIdsAsync(cancellationToken);
+        var generated = await service.AdvanceAsync(deviceIds, cancellationToken);
+        return Ok(new AdvanceSimulatedDevicesResponse(generated.Count));
     }
 }
 

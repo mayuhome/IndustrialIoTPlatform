@@ -20,6 +20,11 @@ public sealed class SimulatedDeviceSimulationService(
         return _repository.GetAllAsync(cancellationToken);
     }
 
+    public Task<IReadOnlyList<Guid>> GetAllDeviceIdsAsync(CancellationToken cancellationToken)
+    {
+        return _repository.GetAllDeviceIdsAsync(cancellationToken);
+    }
+
     public async Task<IReadOnlyList<SimulatedDeviceView>> GenerateAsync(int deviceCount, string? deviceCodePrefix, CancellationToken cancellationToken)
     {
         if (deviceCount <= 0)
@@ -38,20 +43,34 @@ public sealed class SimulatedDeviceSimulationService(
         return generated;
     }
 
-    public async Task<int> AdvanceAsync(CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<SimulatedDeviceView>> AdvanceAsync(
+        IReadOnlyCollection<Guid> deviceIds,
+        CancellationToken cancellationToken)
     {
-        var devices = await _repository.GetAllAsync(cancellationToken);
+        IReadOnlyList<SimulatedDeviceView> devices;
+        if (deviceIds.Count == 0)
+        {
+            devices = await _repository.GetAllAsync(cancellationToken);
+        }
+        else
+        {
+            devices = await _repository.GetByIdsAsync(deviceIds, cancellationToken);
+        }
+
         if (devices.Count == 0)
         {
-            return 0;
+            return Array.Empty<SimulatedDeviceView>();
         }
 
+        var updated = new List<SimulatedDeviceView>(devices.Count);
         foreach (var device in devices)
         {
-            await _repository.UpsertAsync(_generator.Advance(device), cancellationToken);
+            var next = _generator.Advance(device);
+            await _repository.UpsertAsync(next, cancellationToken);
+            updated.Add(next);
         }
 
-        return devices.Count;
+        return updated;
     }
 
     public Task ResetAsync(CancellationToken cancellationToken)

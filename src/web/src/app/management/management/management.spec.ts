@@ -1,0 +1,22 @@
+import { ComponentFixture, TestBed } from '@angular/core/testing';
+
+import { Management } from './management';
+
+describe('Management', () => {
+  let component: Management;
+  let fixture: ComponentFixture<Management>;
+
+  beforeEach(async () => {
+    await TestBed.configureTestingModule({
+      imports: [Management],
+    }).compileComponents();
+
+    fixture = TestBed.createComponent(Management);
+    component = fixture.componentInstance;
+    await fixture.whenStable();
+  });
+
+  it('should create', () => {
+    expect(component).toBeTruthy();
+  });
+});

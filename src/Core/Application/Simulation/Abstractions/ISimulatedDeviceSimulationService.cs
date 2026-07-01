@@ -8,7 +8,9 @@ public interface ISimulatedDeviceSimulationService
 
     Task<IReadOnlyList<SimulatedDeviceView>> GetAllAsync(CancellationToken cancellationToken);
 
-    Task<int> AdvanceAsync(CancellationToken cancellationToken);
+    Task<IReadOnlyList<Guid>> GetAllDeviceIdsAsync(CancellationToken cancellationToken);
+
+    Task<IReadOnlyList<SimulatedDeviceView>> AdvanceAsync(IReadOnlyCollection<Guid> deviceIds, CancellationToken cancellationToken);
 
     Task ResetAsync(CancellationToken cancellationToken);
 

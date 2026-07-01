@@ -33,6 +33,36 @@ public sealed class MongoSimulatedDeviceRepository : ISimulatedDeviceRepository
         return documents.Select(x => x.ToView()).ToArray();
     }
 
+    public async Task<IReadOnlyList<Guid>> GetAllDeviceIdsAsync(CancellationToken cancellationToken)
+    {
+        await EnsureIndexesAsync(cancellationToken);
+
+        var ids = await _collection
+            .Find(FilterDefinition<SimulatedDeviceDocument>.Empty)
+            .Project(x => x.DeviceId)
+            .ToListAsync(cancellationToken);
+
+        return ids;
+    }
+
+    public async Task<IReadOnlyList<SimulatedDeviceView>> GetByIdsAsync(
+        IReadOnlyCollection<Guid> deviceIds,
+        CancellationToken cancellationToken)
+    {
+        await EnsureIndexesAsync(cancellationToken);
+
+        if (deviceIds.Count == 0)
+        {
+            return Array.Empty<SimulatedDeviceView>();
+        }
+
+        var documents = await _collection
+            .Find(x => deviceIds.Contains(x.DeviceId))
+            .ToListAsync(cancellationToken);
+
+        return documents.Select(x => x.ToView()).ToArray();
+    }
+
     public async Task<SimulatedDeviceView?> GetAsync(Guid deviceId, CancellationToken cancellationToken)
     {
         await EnsureIndexesAsync(cancellationToken);

@@ -34,12 +34,14 @@
   - 负责初始模拟设备生成
   - 负责单步温度漂移与状态演进
 
-新增后台 worker：
+新增后台 worker（API 长连接推送）：
 
-- `SimulationBackgroundService`
+- `SimulationStreamBackgroundService`
   - 启动后按配置周期执行
+  - 初始化时一次性获取所有 `deviceId`
   - 自动种子模拟设备
-  - 周期性推进设备实时状态
+  - 每秒为每个 `deviceId` 生成一条数据
+  - 通过 SignalR 长连接实时广播给订阅组件
 
 ### API 层
 
@@ -49,6 +51,12 @@
 - `POST /simulation/devices/generate`
 - `POST /simulation/devices/reset`
 - `POST /simulation/devices/advance`
+
+新增长连接实时接口：
+
+- Hub 路径：`/hubs/simulation`
+- 推送方法：`ReceiveSimulationData`
+- 推送模型：`SimulationDataPoint`
 
 ## 模拟数据结构
 
@@ -74,9 +82,11 @@
 
 1. 启动时检查是否启用模拟。
 2. 若集合为空，则按 `AutoSeedCount` 自动生成初始设备。
-3. 每隔 `UpdateIntervalSeconds` 推进一次所有模拟设备状态。
-4. 温度在 `TemperatureDriftMin/Max` 范围内随机变化。
-5. 当温度超过阈值时状态标记为 `Error`。
+3. 初始化阶段读取全量 `deviceId` 列表并缓存。
+4. 每隔 `UpdateIntervalSeconds` 按 `deviceId` 集合推进一次状态。
+5. 温度在 `TemperatureDriftMin/Max` 范围内随机变化。
+6. 当温度超过阈值时状态标记为 `Error`。
+7. 每次推进后通过 SignalR 广播数据，供其他组件消费。
 
 默认频率：1 秒一次。
 
@@ -89,7 +99,7 @@
 - 手动触发一次推进
 - 查询当前模拟设备列表
 
-这满足“命令行工具或 API 接口”的需求中的 API 路线。
+这满足“命令行工具或 API 接口”的需求中的 API 路线，并补充了长连接推送路线。
 
 ## 配置项
 
@@ -111,12 +121,14 @@
 - `src/Core/Application/Simulation/*`
 - `src/Infrastructure/Simulation/*`
 - `src/API/Controllers/SimulationController.cs`
+- `src/API/Realtime/SimulationHub.cs`
+- `src/API/Realtime/SimulationStreamBackgroundService.cs`
 - `src/API/Program.cs`
 
 ## 设计取舍
 
 - 使用 Mongo 保存模拟数据，避免污染真实设备读模型集合。
-- 使用后台 worker 实现“项目运行时实时数据”要求。
+- 使用 API 层 SignalR + 后台 worker 实现“项目运行时实时数据”要求。
 - 使用版本序列 `Sequence` 作为简单可观察的推进标识。
 
 ## 下一步建议
