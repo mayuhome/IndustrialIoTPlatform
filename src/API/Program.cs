@@ -35,6 +35,25 @@ builder.WebHost.UseUrls($"http://0.0.0.0:{builder.Configuration.GetValue<int?>("
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSignalR();
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("FrontendDevelopment", policy =>
+    {
+        policy
+            .WithOrigins(
+                "http://localhost:4200",
+                "https://localhost:4200",
+                "http://localhost:4300",
+                "https://localhost:4300",
+                "http://127.0.0.1:4200",
+                "https://127.0.0.1:4200",
+                "http://127.0.0.1:4300",
+                "https://127.0.0.1:4300")
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials();
+    });
+});
 builder.Services.AddAuthorization();
 builder.Services
     .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -51,6 +70,23 @@ builder.Services
             IssuerSigningKey = new SymmetricSecurityKey(
                 Encoding.UTF8.GetBytes(builder.Configuration["Jwt:SigningKey"]!)),
             ClockSkew = TimeSpan.FromMinutes(1)
+        };
+
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                var accessToken = context.Request.Query["access_token"];
+                var path = context.HttpContext.Request.Path;
+
+                if (!string.IsNullOrWhiteSpace(accessToken)
+                    && path.StartsWithSegments("/hubs/simulation"))
+                {
+                    context.Token = accessToken;
+                }
+
+                return Task.CompletedTask;
+            }
         };
     });
 builder.Services.AddDbContext<InfrastructureDbContext>(options =>
@@ -157,6 +193,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.UseCors("FrontendDevelopment");
 app.UseAuthentication();
 app.UseAuthorization();
 

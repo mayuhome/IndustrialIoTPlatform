@@ -2,23 +2,30 @@
 	<h1>Create Operator Account</h1>
 	<p class="subline">Set up credentials to access control-plane and analytics modules.</p>
 
-	<form class="auth-form" novalidate>
+	<form class="auth-form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
 		<label>
-			<span>Name</span>
-			<input type="text" placeholder="Factory Admin" />
+			<span>Username</span>
+			<input type="text" formControlName="username" placeholder="factory-admin" />
 		</label>
-
-		<label>
-			<span>Email</span>
-			<input type="email" placeholder="admin@plant.local" />
-		</label>
+		@if (form.controls.username.invalid && form.controls.username.touched) {
+			<p class="field-error">Username is required.</p>
+		}
 
 		<label>
 			<span>Password</span>
-			<input type="password" placeholder="At least 8 characters" />
+			<input type="password" formControlName="password" placeholder="At least 6 characters" />
 		</label>
+		@if (form.controls.password.invalid && form.controls.password.touched) {
+			<p class="field-error">Password must be at least 6 characters.</p>
+		}
 
-		<button type="button">Create Account</button>
+		@if (errorMessage()) {
+			<p class="submit-error">{{ errorMessage() }}</p>
+		}
+
+		<button type="submit" [disabled]="isSubmitting()">
+			{{ isSubmitting() ? 'Creating...' : 'Create Account' }}
+		</button>
 	</form>
 
 	<p class="switch-link">

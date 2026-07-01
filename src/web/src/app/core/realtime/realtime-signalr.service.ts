@@ -1,5 +1,8 @@
 import { Injectable } from '@angular/core';
 import * as signalR from '@microsoft/signalr';
+import { HttpTransportType } from '@microsoft/signalr';
+import { getStoredAccessToken } from '../auth/auth-session';
+import { API_BASE_URL } from '../config/api.config';
 import { LiveDeviceTelemetry, RealtimeConnectionState } from './simulation-data.model';
 
 export interface RealtimeSignalrHandlers {
@@ -21,8 +24,10 @@ export class RealtimeSignalrService {
     handlers.onStateChange('connecting');
 
     this.connection = new signalR.HubConnectionBuilder()
-      .withUrl('/hubs/simulation', {
-        accessTokenFactory: () => localStorage.getItem('access_token') ?? localStorage.getItem('token') ?? ''
+      .withUrl(`${API_BASE_URL}/hubs/simulation`, {
+        accessTokenFactory: () => getStoredAccessToken() ?? '',
+        transport: HttpTransportType.WebSockets,
+        skipNegotiation: true
       })
       .withAutomaticReconnect([0, 2000, 5000, 10000])
       .build();

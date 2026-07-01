@@ -2,18 +2,30 @@
 	<h1>Operator Login</h1>
 	<p class="subline">Access real-time factory telemetry and management controls.</p>
 
-	<form class="auth-form" novalidate>
+	<form class="auth-form" [formGroup]="form" (ngSubmit)="submit()" novalidate>
 		<label>
-			<span>Account</span>
-			<input type="email" placeholder="operator@plant.local" />
+			<span>Username</span>
+			<input type="text" formControlName="username" placeholder="operator" />
 		</label>
+		@if (form.controls.username.invalid && form.controls.username.touched) {
+			<p class="field-error">Username is required.</p>
+		}
 
 		<label>
 			<span>Password</span>
-			<input type="password" placeholder="Enter your password" />
+			<input type="password" formControlName="password" placeholder="Enter your password" />
 		</label>
+		@if (form.controls.password.invalid && form.controls.password.touched) {
+			<p class="field-error">Password must be at least 6 characters.</p>
+		}
 
-		<button type="button">Sign In</button>
+		@if (errorMessage()) {
+			<p class="submit-error">{{ errorMessage() }}</p>
+		}
+
+		<button type="submit" [disabled]="isSubmitting()">
+			{{ isSubmitting() ? 'Signing In...' : 'Sign In' }}
+		</button>
 	</form>
 
 	<p class="switch-link">

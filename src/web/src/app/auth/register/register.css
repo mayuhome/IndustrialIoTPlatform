@@ -48,6 +48,10 @@ input:focus {
 	border-color: #f7b733;
 }
 
+input.ng-invalid.ng-touched {
+	border-color: #ff8f8f;
+}
+
 button {
 	margin-top: 0.6rem;
 	border: 0;
@@ -57,6 +61,18 @@ button {
 	color: #082227;
 	background: linear-gradient(90deg, #f7b733, #ffd57f);
 	cursor: pointer;
+}
+
+button:disabled {
+	opacity: 0.7;
+	cursor: wait;
+}
+
+.field-error,
+.submit-error {
+	margin: -0.2rem 0 0;
+	color: #ffb3b3;
+	font-size: 0.85rem;
 }
 
 .switch-link {
