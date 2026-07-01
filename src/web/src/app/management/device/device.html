@@ -1,1 +1,26 @@
-<p>device works!</p>
+<section class="device-registry">
+	<header>
+		<h2>Connected Devices</h2>
+		<span class="state" [class.connected]="connectionState() === 'connected'">
+			{{ connectionState() }}
+		</span>
+	</header>
+
+	<div class="list">
+		@for (device of devices(); track device.deviceId) {
+			<article class="row">
+				<div>
+					<h3>{{ device.deviceCode }}</h3>
+					<p>Last update: {{ device.lastUpdatedUtc | date: 'HH:mm:ss' }}</p>
+				</div>
+				<div class="stats">
+					<span>{{ device.currentTemperature | number: '1.0-1' }} degC</span>
+					<span class="status">{{ device.status }}</span>
+					<a [routerLink]="['/analytics/device', device.deviceId]">Inspect</a>
+				</div>
+			</article>
+		} @empty {
+			<p class="empty">No live device stream yet. Keep SignalR connected and data will appear.</p>
+		}
+	</div>
+</section>

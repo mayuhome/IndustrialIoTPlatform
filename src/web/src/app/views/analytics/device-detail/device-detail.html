@@ -1,0 +1,14 @@
+<section class="detail-shell">
+  <a routerLink="/analytics/production">Back to analytics</a>
+
+  @if (device(); as item) {
+    <h1>{{ item.deviceCode }}</h1>
+    <p>Status: {{ item.status }}</p>
+    <p>Current temperature: {{ item.currentTemperature | number: '1.0-2' }} degC</p>
+    <p>Max threshold: {{ item.maxTemperatureThreshold | number: '1.0-2' }} degC</p>
+    <p>Last update: {{ item.lastUpdatedUtc | date: 'yyyy-MM-dd HH:mm:ss' }}</p>
+    <p>Sequence: {{ item.sequence }}</p>
+  } @else {
+    <p>Device not found in current telemetry cache.</p>
+  }
+</section>

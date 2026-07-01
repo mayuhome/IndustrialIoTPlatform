@@ -1,0 +1,36 @@
+.management-shell {
+	border-radius: 1rem;
+	border: 1px solid rgba(255, 255, 255, 0.15);
+	background: rgba(3, 11, 14, 0.48);
+	padding: 1rem;
+}
+
+h1 {
+	margin: 0;
+	color: #ffe5b0;
+}
+
+p {
+	margin: 0.5rem 0 0;
+	color: #b7d0d4;
+}
+
+.tabs {
+	display: flex;
+	gap: 0.6rem;
+	margin: 1rem 0;
+}
+
+.tabs a {
+	color: #c8e4e8;
+	text-decoration: none;
+	border: 1px solid rgba(255, 255, 255, 0.2);
+	border-radius: 999px;
+	padding: 0.42rem 0.8rem;
+}
+
+.tabs a.is-active {
+	color: #0c2025;
+	background: #f7b733;
+	border-color: #f7b733;
+}

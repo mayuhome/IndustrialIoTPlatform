@@ -1,0 +1,24 @@
+<section class="analytics-shell">
+  <header>
+    <h1>Production Analytics</h1>
+    <p>Operational snapshot from current live telemetry flow.</p>
+  </header>
+
+  <div class="cards">
+    <article>
+      <h3>Online Assets</h3>
+      <p>{{ devices().length }}</p>
+    </article>
+
+    <article>
+      <h3>Average Temperature</h3>
+      <p>{{ averageTemperature() | number: '1.0-1' }} degC</p>
+    </article>
+  </div>
+
+  <div class="links">
+    @for (device of devices(); track device.deviceId) {
+      <a [routerLink]="['/analytics/device', device.deviceId]">{{ device.deviceCode }} details</a>
+    }
+  </div>
+</section>

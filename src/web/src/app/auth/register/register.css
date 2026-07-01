@@ -1,0 +1,69 @@
+.auth-card {
+	max-width: 560px;
+	margin: 3rem auto;
+	padding: 2rem;
+	border-radius: 1.1rem;
+	background: linear-gradient(160deg, rgba(13, 31, 36, 0.94), rgba(8, 22, 26, 0.76));
+	border: 1px solid rgba(255, 255, 255, 0.16);
+	box-shadow: 0 24px 64px rgba(0, 0, 0, 0.33);
+}
+
+h1 {
+	margin: 0;
+	color: #ffe3ae;
+}
+
+.subline {
+	margin: 0.75rem 0 1.3rem;
+	color: #b6cdd1;
+}
+
+.auth-form {
+	display: grid;
+	gap: 0.9rem;
+}
+
+label {
+	display: grid;
+	gap: 0.35rem;
+}
+
+span {
+	color: #a6c0c5;
+	font-size: 0.83rem;
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+}
+
+input {
+	border-radius: 0.68rem;
+	border: 1px solid rgba(255, 255, 255, 0.2);
+	background: rgba(0, 0, 0, 0.28);
+	color: #f0fbfd;
+	padding: 0.72rem 0.84rem;
+	outline: none;
+}
+
+input:focus {
+	border-color: #f7b733;
+}
+
+button {
+	margin-top: 0.6rem;
+	border: 0;
+	border-radius: 999px;
+	padding: 0.74rem 1rem;
+	font-weight: 700;
+	color: #082227;
+	background: linear-gradient(90deg, #f7b733, #ffd57f);
+	cursor: pointer;
+}
+
+.switch-link {
+	margin-top: 1rem;
+	color: #a6c0c5;
+}
+
+a {
+	color: #ffd57f;
+}

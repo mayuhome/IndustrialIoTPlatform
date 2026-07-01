@@ -1,0 +1,52 @@
+.analytics-shell {
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 1rem;
+  padding: 1rem;
+  background: rgba(4, 11, 15, 0.46);
+}
+
+h1 {
+  margin: 0;
+  color: #ffe2a9;
+}
+
+header p {
+  margin: 0.5rem 0 0;
+  color: #bbd2d7;
+}
+
+.cards {
+  margin-top: 1rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.8rem;
+}
+
+article {
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 0.85rem;
+  padding: 0.8rem;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+article h3 {
+  margin: 0;
+  color: #bdd4d9;
+}
+
+article p {
+  margin: 0.4rem 0 0;
+  font-size: 1.2rem;
+  color: #f2fcff;
+}
+
+.links {
+  margin-top: 1rem;
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+a {
+  color: #ffd57f;
+}

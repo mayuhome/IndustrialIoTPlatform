@@ -1,1 +1,47 @@
-<p>device works!</p>
+<section class="showroom-layout">
+	<div class="scene-panel">
+		<header>
+			<h1>Live Showroom</h1>
+			<p>Digital twin stream from SignalR /hubs/simulation</p>
+		</header>
+
+		<div class="connection-chip" [ngClass]="connectionState()">
+			Connection: {{ connectionState() }}
+		</div>
+
+		<div #sceneHost class="scene-host" role="img" aria-label="3D showroom scene"></div>
+	</div>
+
+	<aside class="telemetry-panel">
+		<h2>Machine Feed</h2>
+
+		<div class="device-list">
+			@for (device of devices(); track device.deviceId) {
+				<button
+					type="button"
+					class="device-row"
+					[class.selected]="selectedDeviceId() === device.deviceId"
+					(click)="selectDevice(device.deviceId)">
+					<div>
+						<strong>{{ device.deviceCode }}</strong>
+						<p>{{ device.status }}</p>
+					</div>
+					<span>{{ device.currentTemperature | number: '1.0-1' }} degC</span>
+				</button>
+			} @empty {
+				<p class="empty">Waiting for simulation points...</p>
+			}
+		</div>
+
+		@if (selectedDevice(); as focused) {
+			<section class="focused-card">
+				<h3>{{ focused.deviceCode }}</h3>
+				<p>Status: {{ focused.status }}</p>
+				<p>Temp: {{ focused.currentTemperature | number: '1.0-2' }} degC</p>
+				<p>Threshold: {{ focused.maxTemperatureThreshold | number: '1.0-1' }} degC</p>
+				<p>Seq: {{ focused.sequence }}</p>
+				<p>Updated: {{ focused.lastUpdatedUtc | date: 'HH:mm:ss' }}</p>
+			</section>
+		}
+	</aside>
+</section>

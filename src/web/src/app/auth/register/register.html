@@ -1,1 +1,28 @@
-<p>register works!</p>
+<section class="auth-card">
+	<h1>Create Operator Account</h1>
+	<p class="subline">Set up credentials to access control-plane and analytics modules.</p>
+
+	<form class="auth-form" novalidate>
+		<label>
+			<span>Name</span>
+			<input type="text" placeholder="Factory Admin" />
+		</label>
+
+		<label>
+			<span>Email</span>
+			<input type="email" placeholder="admin@plant.local" />
+		</label>
+
+		<label>
+			<span>Password</span>
+			<input type="password" placeholder="At least 8 characters" />
+		</label>
+
+		<button type="button">Create Account</button>
+	</form>
+
+	<p class="switch-link">
+		Already registered?
+		<a routerLink="/login">Back to login</a>
+	</p>
+</section>
