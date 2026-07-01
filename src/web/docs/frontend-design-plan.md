@@ -146,6 +146,36 @@ Frontend real-time flow:
 - Duplicate suppression by DeviceId + Sequence.
 - On reconnect, trigger REST snapshot sync before resuming stream display.
 
+### 5.4 Notification Center (Simulator-Sourced)
+
+Notification panel in top header is fed from simulator realtime stream (in-memory only):
+
+- Connection category:
+  - Stream connected
+  - Stream disconnected/error
+- Status category:
+  - Device status transition (e.g., Running -> Maintenance)
+- Alert category:
+  - Temperature crossing threshold upward
+
+Filter chips in notification panel:
+
+- all
+- unread
+- connection
+- status
+- alert
+
+Rules:
+
+- Notifications are generated from signal-store event deltas, not mocked data.
+- No localStorage persistence for notifications.
+- Keep a bounded in-memory list (latest N events).
+- Use sequence delta checks to suppress duplicate notifications.
+- Priority sorting is applied before rendering: high -> medium -> low, then by latest event.
+- Support clear-current-filter action in panel (`all`, `unread`, `connection`, `status`, `alert`).
+- Apply alert mute window: same device + same alert key is suppressed within 2 minutes.
+
 ## 6. State Management Strategy
 
 Use Angular Signals as the default state model.
@@ -280,3 +310,7 @@ Phase F: Hardening
 3. Add SignalR client package and implement realtime-signalr service.
 4. Scaffold showroom module with 3D scene host component.
 5. Replace temporary simulation API polling mindset with stream-first UI updates.
+
+Status update:
+
+- Completed: top-header notification center now reads live simulator events and supports category-based filters.

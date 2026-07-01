@@ -1,14 +1,191 @@
-<div class="app-shell">
-  <header class="topbar">
-    <a class="brand" routerLink="/showroom">Industrial IoT Atlas</a>
-    <nav class="nav-links" aria-label="Primary">
-      <a routerLink="/showroom" routerLinkActive="is-active">Showroom</a>
-      <a routerLink="/management/devices" routerLinkActive="is-active">Management</a>
-      <a routerLink="/analytics/production" routerLinkActive="is-active">Analytics</a>
-    </nav>
-  </header>
+<div class="min-h-dvh bg-slate-950 text-slate-100">
+  <div class="w-full px-4 pb-6 pt-4 sm:px-6 lg:px-8">
+    <header class="relative overflow-hidden rounded-2xl border border-cyan-100/20 bg-gradient-to-br from-slate-900 via-cyan-950 to-slate-900 shadow-[0_18px_90px_rgba(10,16,20,0.55)]">
+      <div class="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_85%_-10%,rgba(245,158,11,0.26),transparent_35%),radial-gradient(circle_at_2%_100%,rgba(56,189,248,0.2),transparent_32%)]"></div>
 
-  <main class="page-frame">
-    <router-outlet></router-outlet>
-  </main>
+      <div class="relative px-4 py-4 sm:px-6">
+        <div class="flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <p class="text-[0.68rem] uppercase tracking-[0.22em] text-cyan-200/80">Industrial Control Plane</p>
+            <a routerLink="/showroom" class="mt-1 inline-block text-2xl font-bold tracking-wide text-amber-100 sm:text-3xl">Industrial IoT Atlas</a>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2 sm:gap-3">
+            <button
+              type="button"
+              (click)="toggleNotifications()"
+              class="group relative inline-flex items-center gap-2 rounded-full border border-cyan-100/25 bg-slate-900/55 px-3 py-2 text-sm text-cyan-100 transition hover:border-cyan-300/50 hover:bg-cyan-900/30">
+              <span class="text-base">🔔</span>
+              <span>消息通知</span>
+              @if (unreadCount() > 0) {
+                <span class="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-rose-500 px-1 text-xs font-semibold text-white">{{ unreadCount() }}</span>
+              }
+            </button>
+
+            @if (isAuthenticated()) {
+              <div class="inline-flex items-center gap-2 rounded-full border border-emerald-200/25 bg-slate-900/55 px-2 py-1 text-sm">
+                <div class="inline-flex h-8 w-8 items-center justify-center rounded-full bg-emerald-400/85 text-sm font-bold text-slate-900">
+                  {{ userInitial() }}
+                </div>
+                <div class="pr-2 leading-tight">
+                  <p class="max-w-[10rem] truncate text-emerald-100">{{ currentUser()?.username }}</p>
+                  <p class="text-[0.68rem] uppercase tracking-[0.18em] text-emerald-200/75">{{ currentUser()?.role }}</p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                (click)="logout()"
+                class="rounded-full border border-rose-300/35 bg-rose-600/85 px-4 py-2 text-sm font-semibold text-white transition hover:bg-rose-500">
+                退出
+              </button>
+            } @else {
+              <a routerLink="/login" class="rounded-full border border-cyan-200/30 bg-cyan-500/85 px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400">登录</a>
+              <a routerLink="/register" class="rounded-full border border-cyan-100/30 bg-slate-900/45 px-4 py-2 text-sm text-cyan-100 transition hover:bg-slate-800">注册</a>
+            }
+          </div>
+        </div>
+
+        <nav class="mt-4 flex flex-wrap gap-2" aria-label="Primary Menu">
+          <a
+            routerLink="/showroom"
+            routerLinkActive="bg-amber-400 text-slate-950 border-amber-400"
+            class="rounded-full border border-white/20 bg-slate-900/35 px-4 py-2 font-semibold uppercase tracking-[0.14em] text-[0.76rem] text-cyan-50 transition hover:border-cyan-200/60 hover:bg-cyan-900/35 sm:text-[0.82rem]">
+            Showroom
+          </a>
+          <a
+            routerLink="/management/devices"
+            routerLinkActive="bg-amber-400 text-slate-950 border-amber-400"
+            class="rounded-full border border-white/20 bg-slate-900/35 px-4 py-2 font-semibold uppercase tracking-[0.14em] text-[0.76rem] text-cyan-50 transition hover:border-cyan-200/60 hover:bg-cyan-900/35 sm:text-[0.82rem]">
+            Management
+          </a>
+          <a
+            routerLink="/analytics/production"
+            routerLinkActive="bg-amber-400 text-slate-950 border-amber-400"
+            class="rounded-full border border-white/20 bg-slate-900/35 px-4 py-2 font-semibold uppercase tracking-[0.14em] text-[0.76rem] text-cyan-50 transition hover:border-cyan-200/60 hover:bg-cyan-900/35 sm:text-[0.82rem]">
+            Analytics
+          </a>
+        </nav>
+
+        @if (notificationsOpen()) {
+          <section class="mt-4 rounded-xl border border-cyan-100/20 bg-slate-950/70 p-4 backdrop-blur" aria-label="Notification Panel">
+            <div class="mb-3 flex items-center justify-between">
+              <h2 class="text-sm font-semibold uppercase tracking-[0.16em] text-cyan-200">消息通知</h2>
+              <div class="flex items-center gap-3">
+                <button
+                  type="button"
+                  (click)="markAllRead()"
+                  class="text-xs text-cyan-200/85 underline decoration-dotted underline-offset-4 hover:text-cyan-100">
+                  全部标记已读
+                </button>
+                <button
+                  type="button"
+                  (click)="clearCurrentFilter()"
+                  class="text-xs text-rose-200/90 underline decoration-dotted underline-offset-4 hover:text-rose-100">
+                  清空当前筛选
+                </button>
+              </div>
+            </div>
+
+            <div class="mb-3 flex flex-wrap gap-2">
+              <button
+                type="button"
+                (click)="setNotificationFilter('all')"
+                class="rounded-full border px-3 py-1 text-xs transition"
+                [class.border-amber-300/70]="notificationFilter() === 'all'"
+                [class.bg-amber-400]="notificationFilter() === 'all'"
+                [class.text-slate-900]="notificationFilter() === 'all'"
+                [class.border-white/20]="notificationFilter() !== 'all'"
+                [class.bg-slate-900/50]="notificationFilter() !== 'all'"
+                [class.text-slate-200]="notificationFilter() !== 'all'">
+                全部
+              </button>
+
+              <button
+                type="button"
+                (click)="setNotificationFilter('unread')"
+                class="rounded-full border px-3 py-1 text-xs transition"
+                [class.border-amber-300/70]="notificationFilter() === 'unread'"
+                [class.bg-amber-400]="notificationFilter() === 'unread'"
+                [class.text-slate-900]="notificationFilter() === 'unread'"
+                [class.border-white/20]="notificationFilter() !== 'unread'"
+                [class.bg-slate-900/50]="notificationFilter() !== 'unread'"
+                [class.text-slate-200]="notificationFilter() !== 'unread'">
+                未读
+              </button>
+
+              <button
+                type="button"
+                (click)="setNotificationFilter('connection')"
+                class="rounded-full border px-3 py-1 text-xs transition"
+                [class.border-amber-300/70]="notificationFilter() === 'connection'"
+                [class.bg-amber-400]="notificationFilter() === 'connection'"
+                [class.text-slate-900]="notificationFilter() === 'connection'"
+                [class.border-white/20]="notificationFilter() !== 'connection'"
+                [class.bg-slate-900/50]="notificationFilter() !== 'connection'"
+                [class.text-slate-200]="notificationFilter() !== 'connection'">
+                连接
+              </button>
+
+              <button
+                type="button"
+                (click)="setNotificationFilter('status')"
+                class="rounded-full border px-3 py-1 text-xs transition"
+                [class.border-amber-300/70]="notificationFilter() === 'status'"
+                [class.bg-amber-400]="notificationFilter() === 'status'"
+                [class.text-slate-900]="notificationFilter() === 'status'"
+                [class.border-white/20]="notificationFilter() !== 'status'"
+                [class.bg-slate-900/50]="notificationFilter() !== 'status'"
+                [class.text-slate-200]="notificationFilter() !== 'status'">
+                状态
+              </button>
+
+              <button
+                type="button"
+                (click)="setNotificationFilter('alert')"
+                class="rounded-full border px-3 py-1 text-xs transition"
+                [class.border-amber-300/70]="notificationFilter() === 'alert'"
+                [class.bg-amber-400]="notificationFilter() === 'alert'"
+                [class.text-slate-900]="notificationFilter() === 'alert'"
+                [class.border-white/20]="notificationFilter() !== 'alert'"
+                [class.bg-slate-900/50]="notificationFilter() !== 'alert'"
+                [class.text-slate-200]="notificationFilter() !== 'alert'">
+                告警
+              </button>
+            </div>
+
+            <div class="grid gap-2">
+              @for (item of filteredNotifications(); track item.id) {
+                <article class="rounded-lg border px-3 py-2" [class.border-cyan-300/50]="!item.read" [class.bg-cyan-950/35]="!item.read" [class.border-white/10]="item.read" [class.bg-slate-900/50]="item.read">
+                  <div class="flex items-start justify-between gap-3">
+                    <div>
+                      <div class="mb-1 flex items-center gap-2">
+                        <span class="inline-flex rounded-full border px-2 py-0.5 text-[0.62rem] uppercase tracking-[0.14em]" [class]="notificationTagClass(item.category)">
+                          {{ item.category }}
+                        </span>
+                        <span class="inline-flex rounded-full border px-2 py-0.5 text-[0.62rem] uppercase tracking-[0.14em]" [class]="notificationLevelClass(item.level)">
+                          {{ item.level }}
+                        </span>
+                        <h3 class="text-sm font-medium text-slate-100">{{ item.title }}</h3>
+                      </div>
+                      <p class="mt-1 text-xs text-slate-300">{{ item.body }}</p>
+                    </div>
+                    <span class="text-[0.68rem] uppercase tracking-[0.12em] text-slate-400">{{ item.time }}</span>
+                  </div>
+                </article>
+              } @empty {
+                <p class="rounded-lg border border-dashed border-white/15 bg-slate-900/45 px-3 py-4 text-sm text-slate-300">
+                  暂无通知，等待 simulator 实时事件...
+                </p>
+              }
+            </div>
+          </section>
+        }
+      </div>
+    </header>
+
+    <main class="mt-4">
+      <router-outlet></router-outlet>
+    </main>
+  </div>
 </div>

@@ -35,7 +35,10 @@ export class Device implements AfterViewInit, OnDestroy {
   private scene?: THREE.Scene;
   private camera?: THREE.PerspectiveCamera;
   private animationFrameId: number | undefined;
+  private resizeFrameId: number | undefined;
   private resizeObserver?: ResizeObserver;
+  private lastWidth = 0;
+  private lastHeight = 0;
   private readonly meshesByDeviceId = new Map<string, THREE.Mesh>();
 
   private readonly syncMeshesEffect = effect(() => {
@@ -77,7 +80,13 @@ export class Device implements AfterViewInit, OnDestroy {
     this.scene.add(floor);
 
     this.resizeObserver = new ResizeObserver(() => {
-      this.resizeRenderer();
+      if (this.resizeFrameId) {
+        cancelAnimationFrame(this.resizeFrameId);
+      }
+
+      this.resizeFrameId = requestAnimationFrame(() => {
+        this.resizeRenderer();
+      });
     });
     this.resizeObserver.observe(host);
     this.resizeRenderer();
@@ -87,6 +96,10 @@ export class Device implements AfterViewInit, OnDestroy {
   ngOnDestroy(): void {
     if (this.animationFrameId) {
       cancelAnimationFrame(this.animationFrameId);
+    }
+
+    if (this.resizeFrameId) {
+      cancelAnimationFrame(this.resizeFrameId);
     }
 
     this.resizeObserver?.disconnect();
@@ -110,6 +123,13 @@ export class Device implements AfterViewInit, OnDestroy {
     if (width === 0 || height === 0) {
       return;
     }
+
+    if (width === this.lastWidth && height === this.lastHeight) {
+      return;
+    }
+
+    this.lastWidth = width;
+    this.lastHeight = height;
 
     this.renderer.setSize(width, height, false);
     this.camera.aspect = width / height;

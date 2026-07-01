@@ -1,26 +1,76 @@
 <section class="device-registry">
 	<header>
-		<h2>Connected Devices</h2>
-		<span class="state" [class.connected]="connectionState() === 'connected'">
-			{{ connectionState() }}
-		</span>
+		<div>
+			<h2>Device Registry</h2>
+			<span class="state" [class.connected]="connectionState() === 'connected'">
+				{{ connectionState() }}
+			</span>
+		</div>
+
+		<button type="button" class="register-btn" (click)="openRegisterModal()">+ Register Device</button>
 	</header>
+
+	@if (errorMessage()) {
+		<p class="error-banner">{{ errorMessage() }}</p>
+	}
 
 	<div class="list">
 		@for (device of devices(); track device.deviceId) {
 			<article class="row">
 				<div>
 					<h3>{{ device.deviceCode }}</h3>
-					<p>Last update: {{ device.lastUpdatedUtc | date: 'HH:mm:ss' }}</p>
+					<p>Last update: {{ device.updatedAtUtc | date: 'HH:mm:ss' }}</p>
 				</div>
 				<div class="stats">
-					<span>{{ device.currentTemperature | number: '1.0-1' }} degC</span>
-					<span class="status">{{ device.status }}</span>
+					@if (device.currentTemperature !== null) {
+						<span>{{ device.currentTemperature | number: '1.0-1' }} degC</span>
+					}
+					<span>Threshold {{ device.maxTemperatureThreshold | number: '1.0-1' }} degC</span>
+					<span class="status-flag" [ngClass]="statusFlagClass(device.status)">
+						<span class="dot"></span>
+						{{ device.status }}
+					</span>
 					<a [routerLink]="['/analytics/device', device.deviceId]">Inspect</a>
 				</div>
 			</article>
 		} @empty {
-			<p class="empty">No live device stream yet. Keep SignalR connected and data will appear.</p>
+			<p class="empty">No devices yet. Register one to start operations.</p>
 		}
 	</div>
 </section>
+
+@if (modalOpen()) {
+	<div class="modal-backdrop" (click)="closeRegisterModal()">
+		<section class="modal" (click)="$event.stopPropagation()">
+			<header class="modal-header">
+				<h3>Register New Device</h3>
+				<button type="button" class="close-btn" (click)="closeRegisterModal()">x</button>
+			</header>
+
+			<form class="modal-form" [formGroup]="form" (ngSubmit)="submitRegister()" novalidate>
+				<label>
+					<span>Device Code</span>
+					<input type="text" formControlName="deviceCode" placeholder="MACHINE-001" />
+				</label>
+				@if (form.controls.deviceCode.invalid && form.controls.deviceCode.touched) {
+					<p class="field-error">Device code must be at least 2 characters.</p>
+				}
+
+				<label>
+					<span>Max Temperature Threshold</span>
+					<input type="number" step="0.1" formControlName="maxTemperatureThreshold" placeholder="90" />
+				</label>
+				@if (form.controls.maxTemperatureThreshold.invalid && form.controls.maxTemperatureThreshold.touched) {
+					<p class="field-error">Threshold must be between 1 and 1000.</p>
+				}
+
+				<div class="actions">
+					<button type="button" class="ghost" (click)="closeRegisterModal()">Cancel</button>
+					<button type="submit" [disabled]="submitting()">
+						{{ submitting() ? 'Registering...' : 'Register' }}
+					</button>
+				</div>
+			</form>
+		</section>
+	</div>
+}

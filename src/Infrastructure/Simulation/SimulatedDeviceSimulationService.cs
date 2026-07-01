@@ -1,6 +1,8 @@
+using Application.Simulation;
+using Application.Abstractions;
+using Application.Devices.Models;
 using Application.Simulation.Abstractions;
 using Application.Simulation.Models;
-using Application.Simulation;
 using Microsoft.Extensions.Options;
 
 namespace Infrastructure.Simulation;
@@ -8,11 +10,13 @@ namespace Infrastructure.Simulation;
 public sealed class SimulatedDeviceSimulationService(
     ISimulatedDeviceRepository repository,
     ISimulatedDeviceStateGenerator generator,
+    IDeviceStatusReadRepository deviceStatusReadRepository,
     IOptions<SimulationOptions> options)
     : ISimulatedDeviceSimulationService
 {
     private readonly ISimulatedDeviceRepository _repository = repository;
     private readonly ISimulatedDeviceStateGenerator _generator = generator;
+    private readonly IDeviceStatusReadRepository _deviceStatusReadRepository = deviceStatusReadRepository;
     private readonly SimulationOptions _options = options.Value;
 
     public Task<IReadOnlyList<SimulatedDeviceView>> GetAllAsync(CancellationToken cancellationToken)
@@ -20,9 +24,10 @@ public sealed class SimulatedDeviceSimulationService(
         return _repository.GetAllAsync(cancellationToken);
     }
 
-    public Task<IReadOnlyList<Guid>> GetAllDeviceIdsAsync(CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<Guid>> GetAllDeviceIdsAsync(CancellationToken cancellationToken)
     {
-        return _repository.GetAllDeviceIdsAsync(cancellationToken);
+        await EnsureRealDevicesTrackedAsync(cancellationToken);
+        return await _repository.GetAllDeviceIdsAsync(cancellationToken);
     }
 
     public async Task<IReadOnlyList<SimulatedDeviceView>> GenerateAsync(int deviceCount, string? deviceCodePrefix, CancellationToken cancellationToken)
@@ -82,15 +87,70 @@ public sealed class SimulatedDeviceSimulationService(
     {
         if (!_options.Enabled || _options.AutoSeedCount <= 0)
         {
+            await EnsureRealDevicesTrackedAsync(cancellationToken);
             return;
         }
 
         var devices = await _repository.GetAllAsync(cancellationToken);
         if (devices.Count > 0)
         {
+            await EnsureRealDevicesTrackedAsync(cancellationToken);
             return;
         }
 
         await GenerateAsync(_options.AutoSeedCount, _options.DeviceCodePrefix, cancellationToken);
+        await EnsureRealDevicesTrackedAsync(cancellationToken);
+    }
+
+    private async Task EnsureRealDevicesTrackedAsync(CancellationToken cancellationToken)
+    {
+        var actualDevices = await _deviceStatusReadRepository.GetAllAsync(cancellationToken);
+        if (actualDevices.Count == 0)
+        {
+            return;
+        }
+
+        var simulatedDevices = await _repository.GetAllAsync(cancellationToken);
+        var simulatedById = simulatedDevices.ToDictionary(x => x.DeviceId);
+
+        foreach (var actualDevice in actualDevices)
+        {
+            if (simulatedById.TryGetValue(actualDevice.DeviceId, out var existing))
+            {
+                var synchronized = existing with
+                {
+                    DeviceCode = actualDevice.DeviceCode,
+                    Status = NormalizeStatus(actualDevice.Status, existing.Status),
+                    MaxTemperatureThreshold = actualDevice.MaxTemperatureThreshold,
+                    LastUpdatedUtc = actualDevice.LastHeartbeatUtc > existing.LastUpdatedUtc
+                        ? actualDevice.LastHeartbeatUtc
+                        : existing.LastUpdatedUtc
+                };
+
+                await _repository.UpsertAsync(synchronized, cancellationToken);
+                continue;
+            }
+
+            await _repository.UpsertAsync(CreateInitialSimulatedView(actualDevice), cancellationToken);
+        }
+    }
+
+    private static SimulatedDeviceView CreateInitialSimulatedView(DeviceStatusView actualDevice)
+    {
+        var initialTemperature = Math.Round(Math.Max(0, Math.Min(actualDevice.MaxTemperatureThreshold - 1, 25)), 1);
+
+        return new SimulatedDeviceView(
+            actualDevice.DeviceId,
+            actualDevice.DeviceCode,
+            NormalizeStatus(actualDevice.Status, "Active"),
+            initialTemperature,
+            actualDevice.MaxTemperatureThreshold,
+            actualDevice.LastHeartbeatUtc,
+            0);
+    }
+
+    private static string NormalizeStatus(string actualStatus, string fallbackStatus)
+    {
+        return string.IsNullOrWhiteSpace(actualStatus) ? fallbackStatus : actualStatus.Trim();
     }
 }

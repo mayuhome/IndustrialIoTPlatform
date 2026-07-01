@@ -1,4 +1,5 @@
 import { Injectable, computed, signal } from '@angular/core';
+import { getStoredAccessToken } from '../auth/auth-session';
 import { LiveDeviceTelemetry, RealtimeConnectionState } from '../realtime/simulation-data.model';
 import { RealtimeSignalrService } from '../realtime/realtime-signalr.service';
 
@@ -9,7 +10,7 @@ export class DeviceStoreService {
   private readonly entities = signal<Record<string, LiveDeviceTelemetry>>({});
   private readonly selectedDeviceId = signal<string | null>(null);
   readonly connectionState = signal<RealtimeConnectionState>('idle');
-  private initialized = false;
+  private connectAttemptInFlight = false;
 
   readonly devices = computed(() =>
     Object.values(this.entities()).sort((a, b) => a.deviceCode.localeCompare(b.deviceCode))
@@ -32,11 +33,22 @@ export class DeviceStoreService {
   constructor(private readonly realtimeSignalrService: RealtimeSignalrService) {}
 
   initialize(): void {
-    if (this.initialized) {
+    if (this.connectAttemptInFlight) {
       return;
     }
 
-    this.initialized = true;
+    const token = getStoredAccessToken();
+    if (!token) {
+      this.connectionState.set('idle');
+      return;
+    }
+
+    const currentState = this.connectionState();
+    if (currentState === 'connected' || currentState === 'connecting' || currentState === 'reconnecting') {
+      return;
+    }
+
+    this.connectAttemptInFlight = true;
 
     void this.realtimeSignalrService
       .connect({
@@ -45,7 +57,16 @@ export class DeviceStoreService {
       })
       .catch(() => {
         this.connectionState.set('error');
+      })
+      .finally(() => {
+        this.connectAttemptInFlight = false;
       });
+  }
+
+  shutdown(): void {
+    this.connectAttemptInFlight = false;
+    this.connectionState.set('idle');
+    void this.realtimeSignalrService.disconnect();
   }
 
   selectDevice(deviceId: string): void {
