@@ -71,3 +71,6 @@ CI gate（build + test + architecture test）。
 - 项目运行时生成针对device id的模拟实时数据，频率可配置，默认为每秒一次。
 - 实现细节文档：
 - [docs/week5-simulated-data-system-implementation.md](docs/week5-simulated-data-system-implementation.md)
+
+前端总体设计文档：
+- [src/web/docs/frontend-design-plan.md](src/web/docs/frontend-design-plan.md)
